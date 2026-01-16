@@ -1,0 +1,234 @@
+﻿WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/lp4yt/.gradle/wrapper/dists/gradle-9.0.0-bin/d6wjpkvcgsg3oed0qlfss3wgl/gradle-9.0.0/lib/native-platform-0.22-milestone-28.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+Initialized native services in: C:\Users\lp4yt\.gradle\native
+Initialized jansi services in: C:\Users\lp4yt\.gradle\native
+Found daemon DaemonInfo{pid=56164, address=[747117fc-3e47-4e61-b091-e9fbc1333529 port:65147, addresses:[/127.0.0.1]], state=Idle, lastBusy=1768587948898, context=DefaultDaemonContext[uid=7ad00efe-f0f6-416b-8cb8-4b15d62ea892,javaHome=C:\Users\lp4yt\.gradle\jdks\eclipse_adoptium-21-amd64-windows\jdk-21.0.8+9,javaVersion=21,javaVendor=Eclipse Adoptium,daemonRegistryDir=C:\Users\lp4yt\.gradle\daemon,pid=56164,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=DE,-Duser.language=de,-Duser.variant]} however its context does not match the desired criteria.
+JVM is incompatible.
+Wanted: DaemonRequestContext{jvmCriteria=C:\Program Files\Java\jdk-24 (no JDK specified, using current Java home), daemonOpts=[-XX:MaxMetaspaceSize=384m, -XX:+HeapDumpOnOutOfMemoryError, -Xms256m, -Xmx512m, -Dfile.encoding=UTF-8, -Duser.country=DE, -Duser.language=de, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+Actual: DefaultDaemonContext[uid=7ad00efe-f0f6-416b-8cb8-4b15d62ea892,javaHome=C:\Users\lp4yt\.gradle\jdks\eclipse_adoptium-21-amd64-windows\jdk-21.0.8+9,javaVersion=21,javaVendor=Eclipse Adoptium,daemonRegistryDir=C:\Users\lp4yt\.gradle\daemon,pid=56164,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=DE,-Duser.language=de,-Duser.variant]
+  Looking for a different daemon...
+The client will now receive all logging from the daemon (pid: 26376). The daemon log file: C:\Users\lp4yt\.gradle\daemon\9.0.0\daemon-26376.out.log
+Starting 17th build in daemon [uptime: 1 hrs 1 mins 12.782 secs, performance: 100%, GC rate: 0.00/s, heap usage: 2% of 512 MiB, non-heap usage: 19% of 384 MiB]
+Using 32 worker leases.
+Now considering [C:\Users\lp4yt\IdeaProjects\HytalePlugin] as hierarchies to watch
+Starting process 'command 'C:/Users/lp4yt/.gradle/caches/9.0.0/transforms/02ed9cb084a345f648f1c0740c07ff8c/transformed/ideaIU-2025.2.4-win/jbr/bin/java.exe''. Working directory: C:\Users\lp4yt\IdeaProjects\HytalePlugin Command: C:/Users/lp4yt/.gradle/caches/9.0.0/transforms/02ed9cb084a345f648f1c0740c07ff8c/transformed/ideaIU-2025.2.4-win/jbr/bin/java.exe -XshowSettings:properties -version
+Successfully started process 'command 'C:/Users/lp4yt/.gradle/caches/9.0.0/transforms/02ed9cb084a345f648f1c0740c07ff8c/transformed/ideaIU-2025.2.4-win/jbr/bin/java.exe''
+Reusing configuration cache.
+Now considering [C:\Users\lp4yt\IdeaProjects\HytalePlugin] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Using local directory build cache for the root build (location = C:\Users\lp4yt\.gradle\caches\build-cache-1, remove unused entries = after 7 days).
+Tasks to be executed: [task ':checkKotlinGradlePluginConfigurationErrors', task ':compileKotlin', task ':compileJava', task ':initializeIntellijPlatformPlugin', task ':patchPluginXml', task ':processResources', task ':classes', task ':generateManifest', task ':instrumentCode', task ':jar', task ':compileTestKotlin', task ':compileTestJava', task ':processTestResources', task ':testClasses', task ':instrumentTestCode', task ':instrumentedJar', task ':composedJar', task ':prepareTestSandbox', task ':prepareTest', task ':test']
+Tasks that were excluded: []
+Resolve mutations for :checkKotlinGradlePluginConfigurationErrors (Thread[#1178,Execution worker,5,main]) started.
+Resolve mutations for :initializeIntellijPlatformPlugin (Thread[#1181,Execution worker Thread 4,5,main]) started.
+:checkKotlinGradlePluginConfigurationErrors (Thread[#1188,Execution worker Thread 11,5,main]) started.
+:initializeIntellijPlatformPlugin (Thread[#1181,Execution worker Thread 4,5,main]) started.
+> Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :compileKotlin (Thread[#1188,Execution worker Thread 11,5,main]) started.
+Build 848e4af9-7b01-45c6-8d11-23373c9fdf5b is started
+:compileKotlin (Thread[#1188,Execution worker Thread 11,5,main]) started.
+> Task :initializeIntellijPlatformPlugin
+Caching disabled for task ':initializeIntellijPlatformPlugin' because:
+  Task is untracked because: Should always run
+Task ':initializeIntellijPlatformPlugin' is not up-to-date because:
+  Task is untracked because: Should always run
+Resolve mutations for :patchPluginXml (Thread[#1181,Execution worker Thread 4,5,main]) started.
+Resolve mutations for :generateManifest (Thread[#1190,Execution worker Thread 13,5,main]) started.
+:patchPluginXml (Thread[#1181,Execution worker Thread 4,5,main]) started.
+:generateManifest (Thread[#1190,Execution worker Thread 13,5,main]) started.
+> Task :patchPluginXml UP-TO-DATE
+Build cache key for task ':patchPluginXml' is 8f19394103cc1116ef0ba6caa8415a90
+Skipping task ':patchPluginXml' as it is up-to-date.
+Resolve mutations for :processResources (Thread[#1181,Execution worker Thread 4,5,main]) started.
+Resolve mutations for :processTestResources (Thread[#1178,Execution worker,5,main]) started.
+:processResources (Thread[#1181,Execution worker Thread 4,5,main]) started.
+:processTestResources (Thread[#1178,Execution worker,5,main]) started.
+> Task :processResources UP-TO-DATE
+Caching disabled for task ':processResources' because:
+  Not worth caching
+Skipping task ':processResources' as it is up-to-date.
+> Task :generateManifest UP-TO-DATE
+Build cache key for task ':generateManifest' is 780ad212c10b4c00b2d2b6edfac2f258
+Skipping task ':generateManifest' as it is up-to-date.
+> Task :processTestResources UP-TO-DATE
+Caching disabled for task ':processTestResources' because:
+  Not worth caching
+Skipping task ':processTestResources' as it is up-to-date.
+> Task :compileKotlin
+Build cache key for task ':compileKotlin' is d7a4f7d28b6a2ff6b71ea68bba0181b4
+Task ':compileKotlin' is not up-to-date because:
+  Input property 'sources' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\ui\parser\HytaleUiParser.kt has changed.
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\java', not found
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\java', not found
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\java', not found
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\java', not found
+Kotlin source files: C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\MyMessageBundle.kt, C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\MyToolWindow.kt, C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\ui\HytaleUiFileEditor.kt, C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\ui\HytaleUiFileEditorProvider.kt, C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\ui\HytaleUiVisualizer.kt, C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\ui\model\HytaleUiModel.kt, C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\kotlin\dev\lp4\hytalemoddingtool\ui\parser\HytaleUiParser.kt
+Java source files:
+Script source files:
+Script file extensions:
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: C:\Program Files\Java\jdk-24
+Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0, 3], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[]), sourceChanges=org.jetbrains.kotlin.buildtools.api.SourcesChanges$Known@64793a14, classpathChanges=NoChanges, workingDir=C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\kotlin\compileKotlin\cacheable, multiModuleICSettings=MultiModuleICSettings(buildHistoryFile=C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\kotlin\compileKotlin\local-state\build-history.bin, useModuleDetection=false), usePreciseJavaTracking=true, icFeatures=IncrementalCompilationFeatures(withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false, enableMonotonousIncrementalCompileSetExpansion=true), outputFiles=[C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\classes\kotlin\main, C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\kotlin\compileKotlin\cacheable, C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\kotlin\compileKotlin\local-state])
+Finished executing kotlin compiler using DAEMON strategy
+Stored cache entry for task ':compileKotlin' with cache key d7a4f7d28b6a2ff6b71ea68bba0181b4
+Resolve mutations for :compileJava (Thread[#1188,Execution worker Thread 11,5,main]) started.
+:compileJava (Thread[#1188,Execution worker Thread 11,5,main]) started.
+> Task :compileJava NO-SOURCE
+Skipping task ':compileJava' as it has no source files and no previous output files.
+Resolve mutations for :classes (Thread[#1188,Execution worker Thread 11,5,main]) started.
+:classes (Thread[#1188,Execution worker Thread 11,5,main]) started.
+> Task :classes UP-TO-DATE
+Skipping task ':classes' as it has no actions.
+Resolve mutations for :instrumentCode (Thread[#1189,Execution worker Thread 12,5,main]) started.
+:instrumentCode (Thread[#1189,Execution worker Thread 12,5,main]) started.
+> Task :instrumentCode
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\main\java', not found
+Build cache key for task ':instrumentCode' is 2ba563f8026c0f139d3dfa79d9621425
+Task ':instrumentCode' is not up-to-date because:
+  Input property 'classesDirs' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\classes\kotlin\main\dev\lp4\hytalemoddingtool\ui\parser\HytaleUiParser.class has changed.
+[org.jetbrains.intellij.platform] Compiling forms and instrumenting code with nullability preconditions
+[ant:instrumentIdeaExtensions] Added @NotNull assertions to 0 files
+Stored cache entry for task ':instrumentCode' with cache key 2ba563f8026c0f139d3dfa79d9621425
+Resolve mutations for :jar (Thread[#1189,Execution worker Thread 12,5,main]) started.
+:jar (Thread[#1189,Execution worker Thread 12,5,main]) started.
+> Task :jar
+Caching disabled for task ':jar' because:
+  Not worth caching
+Task ':jar' is not up-to-date because:
+  Input property 'rootSpec$1' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\classes\kotlin\main\dev\lp4\hytalemoddingtool\ui\parser\HytaleUiParser.class has changed.
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\classes\java\main', not found
+Resolve mutations for :compileTestKotlin (Thread[#1189,Execution worker Thread 12,5,main]) started.
+Resolve mutations for :instrumentedJar (Thread[#1177,included builds,5,main]) started.
+:instrumentedJar (Thread[#1177,included builds,5,main]) started.
+:compileTestKotlin (Thread[#1189,Execution worker Thread 12,5,main]) started.
+> Task :compileTestKotlin UP-TO-DATE
+Build cache key for task ':compileTestKotlin' is 4b34f51e661951b7f7167c721de70bd5
+Skipping task ':compileTestKotlin' as it is up-to-date.
+Resolve mutations for :compileTestJava (Thread[#1189,Execution worker Thread 12,5,main]) started.
+:compileTestJava (Thread[#1189,Execution worker Thread 12,5,main]) started.
+> Task :compileTestJava NO-SOURCE
+Skipping task ':compileTestJava' as it has no source files and no previous output files.
+Resolve mutations for :testClasses (Thread[#1189,Execution worker Thread 12,5,main]) started.
+:testClasses (Thread[#1189,Execution worker Thread 12,5,main]) started.
+> Task :testClasses UP-TO-DATE
+Skipping task ':testClasses' as it has no actions.
+Resolve mutations for :instrumentTestCode (Thread[#1189,Execution worker Thread 12,5,main]) started.
+:instrumentTestCode (Thread[#1189,Execution worker Thread 12,5,main]) started.
+> Task :instrumentTestCode UP-TO-DATE
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\src\test\java', not found
+Build cache key for task ':instrumentTestCode' is 68c5cf41287e2114bf3a5829ce3df194
+Skipping task ':instrumentTestCode' as it is up-to-date.
+> Task :instrumentedJar
+Build cache key for task ':instrumentedJar' is 36e660ca0f40590cfb222b8e02deff8e
+Task ':instrumentedJar' is not up-to-date because:
+  Input property 'rootSpec$1' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\libs\HytaleModdingTool-1.0-SNAPSHOT-base.jar has changed.
+  Input property 'rootSpec$1' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\instrumented\instrumentCode\dev\lp4\hytalemoddingtool\ui\parser\HytaleUiParser.class has changed.
+Stored cache entry for task ':instrumentedJar' with cache key 36e660ca0f40590cfb222b8e02deff8e
+Resolve mutations for :composedJar (Thread[#1177,included builds,5,main]) started.
+:composedJar (Thread[#1177,included builds,5,main]) started.
+> Task :composedJar
+Build cache key for task ':composedJar' is bad34dd7d6b0f2c09e9fc2835457a25f
+Task ':composedJar' is not up-to-date because:
+  Input property 'rootSpec$1' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\libs\HytaleModdingTool-1.0-SNAPSHOT-instrumented.jar has changed.
+Stored cache entry for task ':composedJar' with cache key bad34dd7d6b0f2c09e9fc2835457a25f
+Resolve mutations for :prepareTestSandbox (Thread[#1177,included builds,5,main]) started.
+:prepareTestSandbox (Thread[#1177,included builds,5,main]) started.
+> Task :prepareTestSandbox
+Caching disabled for task ':prepareTestSandbox' because:
+  Not worth caching
+Task ':prepareTestSandbox' is not up-to-date because:
+  Input property 'pluginJar' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\libs\HytaleModdingTool-1.0-SNAPSHOT.jar has changed.
+  Input property 'rootSpec$1$2' file C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\libs\HytaleModdingTool-1.0-SNAPSHOT.jar has changed.
+[org.jetbrains.intellij.platform] Preparing sandbox
+[org.jetbrains.intellij.platform] sandboxConfigDirectory = C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\idea-sandbox\IU-2025.2.4\config-test
+[org.jetbrains.intellij.platform] sandboxPluginsDirectory = C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\idea-sandbox\IU-2025.2.4\plugins-test
+[org.jetbrains.intellij.platform] sandboxLogDirectory = C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\idea-sandbox\IU-2025.2.4\log-test
+[org.jetbrains.intellij.platform] sandboxSystemDirectory = C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\idea-sandbox\IU-2025.2.4\system-test
+[org.jetbrains.intellij.platform] testSandbox = true
+Resolve mutations for :prepareTest (Thread[#1177,included builds,5,main]) started.
+:prepareTest (Thread[#1177,included builds,5,main]) started.
+> Task :prepareTest
+Skipping task ':prepareTest' as it has no actions.
+Resolve mutations for :test (Thread[#1177,included builds,5,main]) started.
+:test (Thread[#1177,included builds,5,main]) started.
+Gradle Test Executor 16 started executing tests.
+Gradle Test Executor 16 finished executing tests.
+> Task :test
+Build cache key for task ':test' is 820fbf6b5689f2b4dc557a18a3767d5f
+Task ':test' is not up-to-date because:
+  Task has failed previously.
+file or directory 'C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\classes\java\test', not found
+Starting process 'Gradle Test Executor 16'. Working directory: C:\Users\lp4yt\IdeaProjects\HytalePlugin Command: C:\Users\lp4yt\.gradle\caches\9.0.0\transforms\02ed9cb084a345f648f1c0740c07ff8c\transformed\ideaIU-2025.2.4-win\jbr\bin\java.exe -Daether.connector.resumeDownloads=false -Dcompose.swing.render.on.graphics=true -Didea.classpath.index.enabled=false -Didea.config.path=C:/Users/lp4yt/IdeaProjects/HytalePlugin/build/idea-sandbox/IU-2025.2.4/config-test -Didea.force.use.core.classloader=true -Didea.kotlin.plugin.use.k2=true -Didea.log.path=C:/Users/lp4yt/IdeaProjects/HytalePlugin/build/idea-sandbox/IU-2025.2.4/log-test -Didea.paths.selector=IntelliJIdea2025.2 -Didea.plugins.path=C:/Users/lp4yt/IdeaProjects/HytalePlugin/build/idea-sandbox/IU-2025.2.4/plugins-test -Didea.system.path=C:/Users/lp4yt/IdeaProjects/HytalePlugin/build/idea-sandbox/IU-2025.2.4/system-test -Didea.use.core.classloader.for.plugin.path=true -Didea.vendor.name=JetBrains -Dintellij.platform.runtime.repository.path=C:/Users/lp4yt/.gradle/caches/9.0.0/transforms/02ed9cb084a345f648f1c0740c07ff8c/transformed/ideaIU-2025.2.4-win/modules/module-descriptors.dat -Dintellij.testFramework.rethrow.logged.errors=true -Dio.netty.allocator.type=pooled -Djava.nio.file.spi.DefaultFileSystemProvider=com.intellij.platform.core.nio.fs.MultiRoutingFileSystemProvider -Djava.system.class.loader=com.intellij.util.lang.PathClassLoader -Djava.util.zip.use.nio.for.zip.file.access=true -Djbr.catch.SIGABRT=true -Djdk.attach.allowAttachSelf=true -Djdk.http.auth.tunneling.disabledSchemes="" -Djdk.module.illegalAccess.silent=true -Djdk.nio.maxCachedBufferSize=2097152 -Djna.boot.library.path=C:/Users/lp4yt/.gradle/caches/9.0.0/transforms/02ed9cb084a345f648f1c0740c07ff8c/transformed/ideaIU-2025.2.4-win/lib/jna/amd64 -Djna.noclasspath=true -Djna.nosys=true -Dorg.gradle.internal.worker.tmpdir=C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\tmp\test\work -Dplugin.path=C:/Users/lp4yt/IdeaProjects/HytalePlugin/build/idea-sandbox/IU-2025.2.4/plugins-test/HytaleModdingTool -Dpty4j.preferred.native.folder=C:/Users/lp4yt/.gradle/caches/9.0.0/transforms/02ed9cb084a345f648f1c0740c07ff8c/transformed/ideaIU-2025.2.4-win/lib/pty4j -Dsplash=true -Dsun.io.useCanonCaches=false -Dsun.java2d.metal=true -Dwsl.use.remote.agent.for.nio.filesystem=true -XX:JbrShrinkingGcMaxHeapFreeRatio=40 -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow -XX:CICompilerCount=2 -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions -XX:TieredOldPercentage=100000 -javaagent:C:\Users\lp4yt\IdeaProjects\HytalePlugin\.intellijPlatform\coroutines-javaagent.jar -Xbootclasspath/a:C:/Users/lp4yt/.gradle/caches/9.0.0/transforms/02ed9cb084a345f648f1c0740c07ff8c/transformed/ideaIU-2025.2.4-win\lib\nio-fs.jar --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.ref=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.text=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED --add-opens=java.base/jdk.internal.vm=ALL-UNNAMED --add-opens=java.base/sun.net.dns=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.fs=ALL-UNNAMED --add-opens=java.base/sun.security.ssl=ALL-UNNAMED --add-opens=java.base/sun.security.util=ALL-UNNAMED --add-opens=java.desktop/com.sun.java.swing=ALL-UNNAMED --add-opens=java.desktop/java.awt=ALL-UNNAMED --add-opens=java.desktop/java.awt.dnd.peer=ALL-UNNAMED --add-opens=java.desktop/java.awt.event=ALL-UNNAMED --add-opens=java.desktop/java.awt.font=ALL-UNNAMED --add-opens=java.desktop/java.awt.image=ALL-UNNAMED --add-opens=java.desktop/java.awt.peer=ALL-UNNAMED --add-opens=java.desktop/javax.swing=ALL-UNNAMED --add-opens=java.desktop/javax.swing.plaf.basic=ALL-UNNAMED --add-opens=java.desktop/javax.swing.text=ALL-UNNAMED --add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED --add-opens=java.desktop/javax.swing.text.html.parser=ALL-UNNAMED --add-opens=java.desktop/sun.awt=ALL-UNNAMED --add-opens=java.desktop/sun.awt.datatransfer=ALL-UNNAMED --add-opens=java.desktop/sun.awt.image=ALL-UNNAMED --add-opens=java.desktop/sun.awt.windows=ALL-UNNAMED --add-opens=java.desktop/sun.font=ALL-UNNAMED --add-opens=java.desktop/sun.java2d=ALL-UNNAMED --add-opens=java.desktop/sun.swing=ALL-UNNAMED --add-opens=java.management/sun.management=ALL-UNNAMED --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED --add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-opens=jdk.internal.jvmstat/sun.jvmstat.monitor=ALL-UNNAMED --add-opens=jdk.jdi/com.sun.tools.jdi=ALL-UNNAMED @C:\Users\lp4yt\.gradle\.tmp\gradle-worker-classpath9240492724271382289txt -Xms128m -Xmx2048m -Dfile.encoding=UTF-8 -Duser.country=DE -Duser.language=de -Duser.variant -ea worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 16'
+Successfully started process 'Gradle Test Executor 16'
+[0.009s][warning][cds] Archived non-system classes are disabled because the java.system.class.loader property is specified (value = "com.intellij.util.lang.PathClassLoader"). To use archived non-system classes, this property must not be set
+HytaleUiParserTest > testParsingIssue STANDARD_OUT
+    [DEBUG_LOG] Loop at 0: '@PrimaryButtonStyle '
+    [DEBUG_LOG] Style name: @PrimaryButtonStyle
+    [DEBUG_LOG] parsed valStr: 'TextButtonStyle' at 37
+    [DEBUG_LOG] found ( after TextButtonStyle, parsing nested map
+    [DEBUG_LOG] parsed valStr: '16' at 97
+    [DEBUG_LOG] parsed valStr: 'true' at 135
+    [DEBUG_LOG] parsed valStr: 'true' at 158
+    [DEBUG_LOG] parsed valStr: 'Center' at 187
+    [DEBUG_LOG] parsed valStr: 'Center' at 214
+    [DEBUG_LOG] parsed valStr: '16' at 276
+    [DEBUG_LOG] parsed valStr: 'true' at 314
+    [DEBUG_LOG] parsed valStr: 'true' at 337
+    [DEBUG_LOG] parsed valStr: 'Center' at 366
+    [DEBUG_LOG] parsed valStr: 'Center' at 393
+    [DEBUG_LOG] parsed valStr: '16' at 455
+    [DEBUG_LOG] parsed valStr: 'true' at 493
+    [DEBUG_LOG] parsed valStr: 'true' at 516
+    [DEBUG_LOG] parsed valStr: 'Center' at 545
+    [DEBUG_LOG] parsed valStr: 'Center' at 572
+    [DEBUG_LOG] nested map parsed for TextButtonStyle
+    [DEBUG_LOG] Style value parsed for @PrimaryButtonStyle
+    [DEBUG_LOG] Style semicolon consumed
+    [DEBUG_LOG] Loop at 579: '@SecondaryButtonStyl'
+    [DEBUG_LOG] Style name: @SecondaryButtonStyle
+    [DEBUG_LOG] parsed valStr: 'TextButtonStyle' at 618
+    [DEBUG_LOG] found ( after TextButtonStyle, parsing nested map
+    [DEBUG_LOG] parsed valStr: '16' at 678
+    [DEBUG_LOG] parsed valStr: 'true' at 716
+    [DEBUG_LOG] parsed valStr: 'true' at 739
+    [DEBUG_LOG] parsed valStr: 'Center' at 768
+    [DEBUG_LOG] parsed valStr: 'Center' at 795
+    [DEBUG_LOG] parsed valStr: '16' at 857
+    [DEBUG_LOG] parsed valStr: 'true' at 895
+    [DEBUG_LOG] parsed valStr: 'true' at 918
+    [DEBUG_LOG] parsed valStr: 'Center' at 947
+    [DEBUG_LOG] parsed valStr: 'Center' at 974
+    [DEBUG_LOG] parsed valStr: '16' at 1036
+    [DEBUG_LOG] parsed valStr: 'true' at 1074
+    [DEBUG_LOG] parsed valStr: 'true' at 1097
+    [DEBUG_LOG] parsed valStr: 'Center' at 1126
+    [DEBUG_LOG] parsed valStr: 'Center' at 1153
+    [DEBUG_LOG] nested map parsed for TextButtonStyle
+    [DEBUG_LOG] Style value parsed for @SecondaryButtonStyle
+    [DEBUG_LOG] Style semicolon consumed
+    [DEBUG_LOG] Loop at 1160: 'Group {\n  Anchor: (W'
+    [DEBUG_LOG] Root component candidate: Group
+    [DEBUG_LOG] parsed valStr: '500' at 1189
+    [DEBUG_LOG] parsed valStr: '350' at 1202
+    [DEBUG_LOG] parsed valStr: 'Top' at 1251
+    [DEBUG_LOG] parsed valStr: '24' at 1273
+    [DEBUG_LOG] parsed valStr: '55' at 1342
+    [DEBUG_LOG] parsed valStr: '32' at 1376
+    [DEBUG_LOG] parsed valStr: 'Center' at 1437
+    [DEBUG_LOG] parsed valStr: 'true' at 1461
+    [DEBUG_LOG] Component at 1160: Group
+    [DEBUG_LOG] Root Component: HytaleUiComponent(type=Group, id=null, properties={Anchor={Width=500, Height=350}, Background=HytaleUiColor(hex=#141c26, alpha=0.98), LayoutMode=Top, Padding={Full=24}}, children=[HytaleUiComponent(type=Label, id=Headline, properties={Text=Welcome!, Anchor={Height=55}, Style={FontSize=32, TextColor=HytaleUiColor(hex=#ffffff, alpha=1.0), HorizontalAlignment=Center, RenderBold=true}}, children=[])])
+    [DEBUG_LOG] Styles: [@PrimaryButtonStyle, @SecondaryButtonStyle]
+Finished generating test XML results (0.001 secs) into: C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\test-results\test
+Generating HTML test report...
+Finished generating test html results (0.003 secs) into: C:\Users\lp4yt\IdeaProjects\HytalePlugin\build\reports\tests\test
+Stored cache entry for task ':test' with cache key 820fbf6b5689f2b4dc557a18a3767d5f
+Build 848e4af9-7b01-45c6-8d11-23373c9fdf5b is closed
+BUILD SUCCESSFUL in 2s
+14 actionable tasks: 8 executed, 6 up-to-date
+Watched directory hierarchies: [C:\Users\lp4yt\IdeaProjects\HytalePlugin]
+Configuration cache entry reused.
