@@ -13,7 +13,7 @@ import javax.swing.JComponent
 class HytaleUiFileEditor(private val project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
 
     private val panel = JewelComposePanel {
-        HytaleUiVisualizer(file)
+        HytaleUiVisualizer(project, file)
     }
 
     override fun getComponent(): JComponent = panel

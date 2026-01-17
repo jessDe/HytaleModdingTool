@@ -4,7 +4,9 @@ data class HytaleUiComponent(
     val type: String,
     val id: String? = null,
     val properties: Map<String, Any?> = emptyMap(),
-    val children: List<HytaleUiComponent> = emptyList()
+    val children: List<HytaleUiComponent> = emptyList(),
+    val startOffset: Int = 0,
+    val endOffset: Int = 0
 )
 
 data class HytaleUiFile(

@@ -29,15 +29,17 @@ class HytaleUiParser(private val content: String) {
                 content.startsWith("@", pos) -> {
                     val start = pos
                     val styleName = readIdentifier()
+                    // Remove @ from styleName if present
+                    val cleanStyleName = if (styleName.startsWith("@")) styleName.substring(1) else styleName
                     skipWhitespace()
                     if (consume("=")) {
-                        val styleValue = parseValue()
-                        styles[styleName] = styleValue
+                        val styleValue = parseValue(styles)
+                        styles[cleanStyleName] = styleValue
                         skipWhitespace()
                         consume(";")
                     } else {
                         pos = start
-                        val comp = parseComponent()
+                        val comp = parseComponent(styles)
                         if (rootComponent == null) {
                             rootComponent = comp
                         }
@@ -50,7 +52,7 @@ class HytaleUiParser(private val content: String) {
                         pos++
                     } else if (identifier.isNotEmpty()) {
                         pos = start
-                        val comp = parseComponent()
+                        val comp = parseComponent(styles)
                         if (rootComponent == null) {
                             rootComponent = comp
                         }
@@ -62,7 +64,8 @@ class HytaleUiParser(private val content: String) {
         return HytaleUiFile(imports, styles, rootComponent)
     }
 
-    private fun parseComponent(): HytaleUiComponent {
+    private fun parseComponent(globalStyles: Map<String, Any?>): HytaleUiComponent {
+        val startOffset = pos
         var type = readIdentifier()
         skipWhitespace()
         
@@ -90,7 +93,7 @@ class HytaleUiParser(private val content: String) {
                 if (peek("}")) break
                 
                 // Distinguish between property and child component
-                val startPos = pos
+                val componentPropStartPos = pos
                 val identifier = readIdentifier()
                 skipWhitespace()
                 
@@ -99,30 +102,36 @@ class HytaleUiParser(private val content: String) {
                     continue
                 }
 
-                if (consume(":")) {
-                    // Property
-                    properties[identifier] = parseValue()
-                    skipWhitespace()
-                    consume(";")
-                } else if (consume("=")) {
-                    // Assignment (like @Text = "...")
-                    properties["@$identifier"] = parseValue()
+                if (consume(":") || consume("=")) {
+                    // Property or Assignment
+                    val isAssignment = content[pos - 1] == '='
+                    var value = parseValue(globalStyles)
+                    
+                    // Resolve variable references
+                    value = resolveVariables(value, globalStyles)
+                    
+                    if (isAssignment) {
+                        properties["@$identifier"] = value
+                    } else {
+                        properties[identifier] = value
+                    }
                     skipWhitespace()
                     consume(";")
                 } else {
                     // Child component
-                    pos = startPos
-                    children.add(parseComponent())
+                    pos = componentPropStartPos
+                    children.add(parseComponent(globalStyles))
                 }
                 skipWhitespace()
             }
             consume("}")
         }
+        val endOffset = pos
 
-        return HytaleUiComponent(type, id, properties, children)
+        return HytaleUiComponent(type, id, properties, children, startOffset, endOffset)
     }
 
-    private fun parseValue(): Any? {
+    private fun parseValue(globalStyles: Map<String, Any?> = emptyMap()): Any? {
         skipWhitespace()
         val start = pos
         return when {
@@ -144,13 +153,20 @@ class HytaleUiParser(private val content: String) {
                         // but let's see how it's used.
                     }
 
-                    if (consume(":")) {
-                        map[key] = parseValue()
-                    } else if (consume("=")) {
-                        map[key] = parseValue()
+                    if (consume(":") || consume("=")) {
+                        var value = parseValue(globalStyles)
+                        // Resolve variable references in maps
+                        value = resolveVariables(value, globalStyles)
+                        map[key] = value
                     } else if (peek("(")) {
                         // Handle constructor-like Style(...) as a value in a map
-                        map[key] = parseValue()
+                        val valStr = readIdentifierOrValue()
+                        val mapValue = parseValue(globalStyles)
+                        if (mapValue is Map<*, *>) {
+                            map[key] = resolveVariables(mapOf(valStr to mapValue), globalStyles)
+                        } else {
+                            map[key] = mapValue
+                        }
                     } else if (key.isNotEmpty()) {
                         // Check if it's just a value (no key: prefix)
                         map["value_${map.size}"] = key
@@ -169,16 +185,16 @@ class HytaleUiParser(private val content: String) {
                 consume(")")
                 
                 // Try to map to HytaleUiAnchor if it looks like one
-                if (map.containsKey("Width") || map.containsKey("Height") || map.containsKey("Full")) {
+                if (map.containsKey("Width") || map.containsKey("Height") || map.containsKey("Full") || map.containsKey("FlexWeight")) {
+                    // Check if it's likely NOT an anchor (e.g., just Full without Width/Height in a context that might be Padding)
+                    // But for now, we'll keep the conversion and let the visualizer handle it.
+                    // However, we should only convert if it has Anchor-specific keys or is explicitly an Anchor() constructor.
                     HytaleUiAnchor(
-                        width = map["Width"]?.toString()?.toIntOrNull(),
-                        height = map["Height"]?.toString()?.toIntOrNull(),
-                        full = map["Full"]?.toString()?.toIntOrNull(),
-                        flexWeight = map["FlexWeight"]?.toString()?.toFloatOrNull()
+                        width = map["Width"]?.toString()?.toIntOrNull() ?: map["@Width"]?.toString()?.toIntOrNull(),
+                        height = map["Height"]?.toString()?.toIntOrNull() ?: map["@Height"]?.toString()?.toIntOrNull(),
+                        full = map["Full"]?.toString()?.toIntOrNull() ?: map["@Full"]?.toString()?.toIntOrNull(),
+                        flexWeight = map["FlexWeight"]?.toString()?.toFloatOrNull() ?: map["@FlexWeight"]?.toString()?.toFloatOrNull()
                     )
-                } else if (map.containsKey("HorizontalAlignment") || map.containsKey("VerticalAlignment") || map.containsKey("FontSize") || map.containsKey("TextColor")) {
-                    // It's likely a Style map, keep it as a map but ensure it's handled properly
-                    map
                 } else {
                     map
                 }
@@ -211,13 +227,29 @@ class HytaleUiParser(private val content: String) {
                 // Check for constructor-like call: Name(properties)
                 skipWhitespace()
                 if (peek("(")) {
-                    val mapValue = parseValue()
+                    val mapValue = parseValue(globalStyles)
                     if (mapValue is Map<*, *>) {
-                        return mapOf(valStr to mapValue)
+                        return resolveVariables(mapOf(valStr to mapValue), globalStyles)
                     }
                 }
                 result
             }
+        }
+    }
+
+    private fun resolveVariables(value: Any?, globalStyles: Map<String, Any?>): Any? {
+        return when (value) {
+            is String -> {
+                if (value.startsWith("@")) {
+                    globalStyles[value.substring(1)] ?: value
+                } else {
+                    value
+                }
+            }
+            is Map<*, *> -> {
+                value.mapValues { resolveVariables(it.value, globalStyles) }
+            }
+            else -> value
         }
     }
 

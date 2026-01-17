@@ -1,6 +1,13 @@
 ﻿package dev.lp4.hytalemoddingtool.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import com.intellij.openapi.project.Project
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,9 +65,15 @@ import dev.lp4.hytalemoddingtool.ui.model.HytaleUiFile
 import kotlinx.coroutines.withContext
 
 @Composable
-fun HytaleUiVisualizer(file: VirtualFile) {
+fun HytaleUiVisualizer(project: Project, file: VirtualFile) {
     val document = remember(file) { FileDocumentManager.getInstance().getDocument(file) }
     
+    val navigateToCode: (Int) -> Unit = remember(project, file) {
+        { offset ->
+            OpenFileDescriptor(project, file, offset).navigate(true)
+        }
+    }
+
     val contentFlow = remember(document) {
         callbackFlow {
             val listener = object : DocumentListener {
@@ -129,7 +142,7 @@ fun HytaleUiVisualizer(file: VirtualFile) {
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                LayoutPreview(root)
+                LayoutPreview(root, navigateToCode)
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -146,7 +159,7 @@ fun HytaleUiVisualizer(file: VirtualFile) {
             
             uiFile?.let { fileModel ->
                 fileModel.rootComponent?.let { root ->
-                    UiComponentView(root, 0)
+                    UiComponentView(root, 0, navigateToCode)
                 } ?: Text("No root component found", color = Color.Yellow)
             } ?: if (rawContent.isEmpty()) {
                 Text("Empty file", color = Color.Gray)
@@ -166,7 +179,7 @@ fun HytaleUiVisualizer(file: VirtualFile) {
                 .padding(8.dp)
         ) {
             Text(
-                text = if (rawContent.length > 1000) rawContent.take(1000) + "..." else rawContent,
+                text = highlightHytaleUi(if (rawContent.length > 1000) rawContent.take(1000) + "..." else rawContent),
                 color = Color(0xFF00FF00),
                 fontFamily = FontFamily.Monospace,
                 fontSize = 10.sp
@@ -176,8 +189,12 @@ fun HytaleUiVisualizer(file: VirtualFile) {
 }
 
 @Composable
-fun UiComponentView(component: HytaleUiComponent, depth: Int = 0) {
-    Column(modifier = Modifier.padding(start = if (depth > 0) 12.dp else 0.dp)) {
+fun UiComponentView(component: HytaleUiComponent, depth: Int = 0, onComponentClick: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(start = if (depth > 0) 12.dp else 0.dp)
+            .clickable { onComponentClick(component.startOffset) }
+    ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
@@ -209,7 +226,7 @@ fun UiComponentView(component: HytaleUiComponent, depth: Int = 0) {
         }
 
         component.children.forEach { child ->
-            UiComponentView(child, depth + 1)
+            UiComponentView(child, depth + 1, onComponentClick)
         }
     }
 }
@@ -225,13 +242,13 @@ fun formatValue(value: Any?): String {
 }
 
 @Composable
-fun LayoutPreview(component: HytaleUiComponent) {
+fun LayoutPreview(component: HytaleUiComponent, onComponentClick: (Int) -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column {
-            RenderComponent(component)
+            RenderComponent(component, onComponentClick)
         }
     }
 }
@@ -242,53 +259,137 @@ fun RenderLabel(
     style: Map<*, *>?,
     modifier: Modifier
 ) {
-    val hAlign = style?.get("HorizontalAlignment")?.toString() ?: "Left"
-    val vAlign = style?.get("VerticalAlignment")?.toString() ?: "Top"
-    val fontSize = style?.get("FontSize")?.toString()?.toIntOrNull() ?: 12
-    val textColor = style?.get("TextColor") as? HytaleUiColor
-    val isBold = style?.get("RenderBold")?.toString()?.toBoolean() ?: false
-    val isUppercase = style?.get("RenderUppercase")?.toString()?.toBoolean() ?: false
-    val letterSpacing = style?.get("LetterSpacing")?.toString()?.toFloatOrNull() ?: 0f
+    // Unwrap style if it's wrapped in a constructor map like Style(...) or LabelStyle(...)
+    var effectiveStyle = style
+    if (effectiveStyle != null && effectiveStyle.size == 1 && !effectiveStyle.containsKey("HorizontalAlignment") && !effectiveStyle.containsKey("@HorizontalAlignment")) {
+        val firstValue = effectiveStyle.values.first()
+        if (firstValue is Map<*, *>) {
+            effectiveStyle = firstValue
+        }
+    }
+
+    val hAlign = (effectiveStyle?.get("HorizontalAlignment") ?: effectiveStyle?.get("@HorizontalAlignment"))?.toString() ?: "Left"
+    val vAlign = (effectiveStyle?.get("VerticalAlignment") ?: effectiveStyle?.get("@VerticalAlignment"))?.toString() ?: "Top"
+    val fontSize = (effectiveStyle?.get("FontSize") ?: effectiveStyle?.get("@FontSize"))?.toString()?.toIntOrNull() ?: 12
+    val textColorValue = effectiveStyle?.get("TextColor") ?: effectiveStyle?.get("@TextColor")
+    val textColor = textColorValue as? HytaleUiColor
+    val isBold = (effectiveStyle?.get("RenderBold") ?: effectiveStyle?.get("@RenderBold"))?.toString()?.toBoolean() ?: false
+    val isUppercase = (effectiveStyle?.get("RenderUppercase") ?: effectiveStyle?.get("@RenderUppercase"))?.toString()?.toBoolean() ?: false
+    val letterSpacing = (effectiveStyle?.get("LetterSpacing") ?: effectiveStyle?.get("@LetterSpacing"))?.toString()?.toFloatOrNull() ?: 0f
+
+    val alignment = when {
+        (hAlign == "Center" || hAlign == "Centre") && vAlign == "Center" -> Alignment.Center
+        (hAlign == "Center" || hAlign == "Centre") && vAlign == "Top" -> Alignment.TopCenter
+        (hAlign == "Center" || hAlign == "Centre") && vAlign == "Bottom" -> Alignment.BottomCenter
+        hAlign == "Right" && vAlign == "Center" -> Alignment.CenterEnd
+        hAlign == "Right" && vAlign == "Top" -> Alignment.TopEnd
+        hAlign == "Right" && vAlign == "Bottom" -> Alignment.BottomEnd
+        hAlign == "Left" && vAlign == "Center" -> Alignment.CenterStart
+        hAlign == "Left" && vAlign == "Bottom" -> Alignment.BottomStart
+        else -> Alignment.TopStart
+    }
+
+    val finalTextColor = if (textColor != null) {
+        parseHexColor(textColor.hex).copy(alpha = textColor.alpha)
+    } else if (textColorValue is Map<*, *>) {
+        val hex = textColorValue["hex"]?.toString() ?: textColorValue["Hex"]?.toString()
+        val alpha = textColorValue["alpha"]?.toString()?.toFloatOrNull() ?: textColorValue["Alpha"]?.toString()?.toFloatOrNull() ?: 1.0f
+        if (hex != null) parseHexColor(hex).copy(alpha = alpha) else Color.White
+    } else {
+        Color.White
+    }
 
     Box(
         modifier = modifier,
-        contentAlignment = when {
-            hAlign == "Center" && vAlign == "Center" -> Alignment.Center
-            hAlign == "Center" && vAlign == "Top" -> Alignment.TopCenter
-            hAlign == "Center" && vAlign == "Bottom" -> Alignment.BottomCenter
-            hAlign == "Right" && vAlign == "Center" -> Alignment.CenterEnd
-            hAlign == "Right" && vAlign == "Top" -> Alignment.TopEnd
-            hAlign == "Right" && vAlign == "Bottom" -> Alignment.BottomEnd
-            hAlign == "Left" && vAlign == "Center" -> Alignment.CenterStart
-            hAlign == "Left" && vAlign == "Bottom" -> Alignment.BottomStart
-            else -> Alignment.TopStart
-        }
+        contentAlignment = alignment
     ) {
         Text(
             text = if (isUppercase) text.uppercase() else text,
-            color = if (textColor != null) parseHexColor(textColor.hex).copy(alpha = textColor.alpha) else Color.White,
+            color = finalTextColor,
             fontSize = fontSize.sp,
             textAlign = when (hAlign) {
-                "Center" -> TextAlign.Center
+                "Center", "Centre" -> TextAlign.Center
                 "Right" -> TextAlign.End
                 else -> TextAlign.Start
             },
             fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
-            letterSpacing = letterSpacing.sp
+            letterSpacing = letterSpacing.sp,
+            modifier = Modifier.align(alignment)
         )
     }
 }
 
 @Composable
-fun ColumnScope.RenderComponent(component: HytaleUiComponent) {
-    val anchor = component.properties["Anchor"] as? HytaleUiAnchor
-    val flexWeight = component.properties["FlexWeight"]?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
+fun ColumnScope.RenderComponent(component: HytaleUiComponent, onComponentClick: (Int) -> Unit) {
+    val anchor = (component.properties["Anchor"] ?: component.properties["@Anchor"]) as? HytaleUiAnchor
+    val flexWeight = (component.properties["FlexWeight"] ?: component.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
     
-    val paddingMap = component.properties["Padding"] as? Map<*, *>
-    val paddingFull = paddingMap?.get("Full")?.toString()?.toIntOrNull() ?: 0
+    val paddingMap = (component.properties["Padding"] ?: component.properties["@Padding"])
+    val paddingFull = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Full"] ?: paddingMap["@Full"])?.toString()?.toIntOrNull() ?: 0
+        is HytaleUiAnchor -> paddingMap.full ?: 0
+        else -> 0
+    }
+    val paddingTop = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Top"] ?: paddingMap["@Top"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+    val paddingBottom = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Bottom"] ?: paddingMap["@Bottom"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+    val paddingLeft = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Left"] ?: paddingMap["@Left"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+    val paddingRight = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Right"] ?: paddingMap["@Right"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+
+    val marginMap = (component.properties["Margin"] ?: component.properties["@Margin"])
+    val marginFull = when (marginMap) {
+        is Map<*, *> -> (marginMap["Full"] ?: marginMap["@Full"])?.toString()?.toIntOrNull() ?: 0
+        is HytaleUiAnchor -> marginMap.full ?: 0
+        else -> 0
+    }
+    val marginTop = when (marginMap) {
+        is Map<*, *> -> (marginMap["Top"] ?: marginMap["@Top"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
+    val marginBottom = when (marginMap) {
+        is Map<*, *> -> (marginMap["Bottom"] ?: marginMap["@Bottom"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
+    val marginLeft = when (marginMap) {
+        is Map<*, *> -> (marginMap["Left"] ?: marginMap["@Left"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
+    val marginRight = when (marginMap) {
+        is Map<*, *> -> (marginMap["Right"] ?: marginMap["@Right"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
 
     val baseModifier = run {
-        var m: Modifier = Modifier
+        var m: Modifier = Modifier.clickable { onComponentClick(component.startOffset) }
+        
+        if (marginLeft > 0 || marginTop > 0 || marginRight > 0 || marginBottom > 0) {
+            m = m.padding(
+                start = marginLeft.dp,
+                top = marginTop.dp,
+                end = marginRight.dp,
+                bottom = marginBottom.dp
+            )
+        }
+
         if (anchor != null) {
             if (anchor.width != null) {
                 m = m.width(anchor.width.dp)
@@ -300,26 +401,38 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent) {
             m = m.fillMaxWidth()
         }
         
-        val bg = component.properties["Background"] as? HytaleUiColor
+        val bgValue = component.properties["Background"] ?: component.properties["@Background"]
+        val bg = bgValue as? HytaleUiColor
         if (bg != null) {
             val color = parseHexColor(bg.hex).copy(alpha = bg.alpha)
             m = m.background(color)
+        } else if (bgValue is Map<*, *>) {
+            val hex = bgValue["hex"]?.toString() ?: bgValue["Hex"]?.toString()
+            if (hex != null) {
+                val alpha = bgValue["alpha"]?.toString()?.toFloatOrNull() ?: bgValue["Alpha"]?.toString()?.toFloatOrNull() ?: 1.0f
+                m = m.background(parseHexColor(hex).copy(alpha = alpha))
+            }
         } else if (component.type == "Group" && component.children.isEmpty() && anchor?.width != null && anchor.height != null) {
              m = m.background(Color.Gray.copy(alpha = 0.1f))
         }
 
-        if (paddingFull > 0) {
-            m = m.padding(paddingFull.dp)
+        if (paddingLeft > 0 || paddingTop > 0 || paddingRight > 0 || paddingBottom > 0) {
+            m = m.padding(
+                start = paddingLeft.dp,
+                top = paddingTop.dp,
+                end = paddingRight.dp,
+                bottom = paddingBottom.dp
+            )
         }
         m
     }
 
     val modifier = if (flexWeight > 0) baseModifier.weight(flexWeight) else baseModifier
-    val layoutMode = component.properties["LayoutMode"]?.toString() ?: "Top"
+    val layoutMode = (component.properties["LayoutMode"] ?: component.properties["@LayoutMode"])?.toString() ?: "Top"
 
     when (component.type) {
         "Group" -> {
-            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center") {
+            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center" || layoutMode == "Centre") {
                 Row(
                     modifier = modifier,
                     horizontalArrangement = when (layoutMode) {
@@ -327,49 +440,73 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent) {
                         "Right" -> Arrangement.End
                         else -> Arrangement.Center
                     },
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = when (layoutMode) {
+                        "Center", "Centre" -> Alignment.CenterVertically
+                        "Bottom" -> Alignment.Bottom
+                        else -> Alignment.Top
+                    }
                 ) {
-                    component.children.forEach { RenderComponentInRow(it) }
+                    component.children.forEach { RenderComponentInRow(it, onComponentClick) }
                 }
             } else {
                 Column(
                     modifier = modifier,
                     verticalArrangement = when (layoutMode) {
                         "Bottom" -> Arrangement.Bottom
-                        "Center" -> Arrangement.Center
+                        "Center", "Centre" -> Arrangement.Center
                         else -> Arrangement.Top
                     },
                     horizontalAlignment = when (layoutMode) {
-                        "Center" -> Alignment.CenterHorizontally
+                        "Center", "Centre" -> Alignment.CenterHorizontally
                         "Right" -> Alignment.End
                         else -> Alignment.Start
                     }
                 ) {
-                    component.children.forEach { RenderComponent(it) }
+                    component.children.forEach { RenderComponent(it, onComponentClick) }
                 }
             }
         }
         "Label" -> {
-            val text = component.properties["Text"]?.toString() ?: ""
-            val style = component.properties["Style"] as? Map<*, *>
+            val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
+            val style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
             RenderLabel(text, style, modifier)
         }
         "TextButton" -> {
-            val text = (component.properties["@Text"] ?: component.properties["Text"])?.toString() ?: ""
-            var style = component.properties["Style"] as? Map<*, *>
-            
-            // Handle @StyleName reference which might be stored in the style map
-            if (style == null) {
-                 style = component.properties["@Style"] as? Map<*, *>
-            }
+            val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
+            var style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
 
-            val defaultStyle = (style?.get("Default") as? Map<*, *>) ?: style
+            // Unwrap style if it's wrapped in a constructor map like TextButtonStyle(...)
+            if (style != null && style.size == 1 && !style.containsKey("Default") && !style.containsKey("@Default")) {
+                val firstValue = style.values.first()
+                if (firstValue is Map<*, *>) {
+                    style = firstValue
+                }
+            }
             
-            val bg = defaultStyle?.get("Background") as? HytaleUiColor
-            val labelStyle = defaultStyle?.get("LabelStyle") as? Map<*, *> ?: defaultStyle
+            // If the style is a TextButtonStyle, it will have a "Default" key (and "Hovered", "Pressed")
+            // Or it might just be the content of "Default" if it was resolved from a global style.
+            val textButtonStyle = if (style?.containsKey("Default") == true) {
+                style["Default"] as? Map<*, *>
+            } else if (style?.containsKey("@Default") == true) {
+                style["@Default"] as? Map<*, *>
+            } else {
+                style
+            }
+            
+            val bgValue = textButtonStyle?.get("Background") ?: textButtonStyle?.get("@Background")
+            val bg = bgValue as? HytaleUiColor
+            val labelStyle = (textButtonStyle?.get("LabelStyle") ?: textButtonStyle?.get("@LabelStyle")) as? Map<*, *> ?: textButtonStyle
 
             val btnModifier = modifier.background(
-                if (bg != null) parseHexColor(bg.hex).copy(alpha = bg.alpha) else Color(0xFF2B3542)
+                if (bg != null) {
+                    parseHexColor(bg.hex).copy(alpha = bg.alpha)
+                } else if (bgValue is Map<*, *>) {
+                    val hex = bgValue["hex"]?.toString() ?: bgValue["Hex"]?.toString()
+                    val alpha = bgValue["alpha"]?.toString()?.toFloatOrNull() ?: bgValue["Alpha"]?.toString()?.toFloatOrNull() ?: 1.0f
+                    if (hex != null) parseHexColor(hex).copy(alpha = alpha) else Color(0xFF2B3542)
+                } else {
+                    Color(0xFF2B3542)
+                }
             )
             RenderLabel(text, labelStyle, btnModifier)
         }
@@ -427,7 +564,7 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent) {
             Box(modifier = modifier.background(Color.Gray.copy(alpha = 0.3f))) {
                 Column {
                     Text(component.type, fontSize = 8.sp, color = Color.LightGray)
-                    component.children.forEach { RenderComponent(it) }
+                    component.children.forEach { RenderComponent(it, onComponentClick) }
                 }
             }
         }
@@ -435,15 +572,76 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent) {
 }
 
 @Composable
-fun RowScope.RenderComponentInRow(component: HytaleUiComponent) {
-    val anchor = component.properties["Anchor"] as? HytaleUiAnchor
-    val flexWeight = component.properties["FlexWeight"]?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
+fun RowScope.RenderComponentInRow(component: HytaleUiComponent, onComponentClick: (Int) -> Unit) {
+    val anchor = (component.properties["Anchor"] ?: component.properties["@Anchor"]) as? HytaleUiAnchor
+    val flexWeight = (component.properties["FlexWeight"] ?: component.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
     
-    val paddingMap = component.properties["Padding"] as? Map<*, *>
-    val paddingFull = paddingMap?.get("Full")?.toString()?.toIntOrNull() ?: 0
+    val paddingMap = (component.properties["Padding"] ?: component.properties["@Padding"])
+    val paddingFull = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Full"] ?: paddingMap["@Full"])?.toString()?.toIntOrNull() ?: 0
+        is HytaleUiAnchor -> paddingMap.full ?: 0
+        else -> 0
+    }
+    val paddingTop = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Top"] ?: paddingMap["@Top"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+    val paddingBottom = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Bottom"] ?: paddingMap["@Bottom"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+    val paddingLeft = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Left"] ?: paddingMap["@Left"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+    val paddingRight = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Right"] ?: paddingMap["@Right"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingFull
+        else -> paddingFull
+    }
+
+    val marginMap = (component.properties["Margin"] ?: component.properties["@Margin"])
+    val marginFull = when (marginMap) {
+        is Map<*, *> -> (marginMap["Full"] ?: marginMap["@Full"])?.toString()?.toIntOrNull() ?: 0
+        is HytaleUiAnchor -> marginMap.full ?: 0
+        else -> 0
+    }
+    val marginTop = when (marginMap) {
+        is Map<*, *> -> (marginMap["Top"] ?: marginMap["@Top"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
+    val marginBottom = when (marginMap) {
+        is Map<*, *> -> (marginMap["Bottom"] ?: marginMap["@Bottom"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
+    val marginLeft = when (marginMap) {
+        is Map<*, *> -> (marginMap["Left"] ?: marginMap["@Left"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
+    val marginRight = when (marginMap) {
+        is Map<*, *> -> (marginMap["Right"] ?: marginMap["@Right"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginFull
+        else -> marginFull
+    }
 
     val baseModifier = run {
-        var m: Modifier = Modifier
+        var m: Modifier = Modifier.clickable { onComponentClick(component.startOffset) }
+
+        if (marginLeft > 0 || marginTop > 0 || marginRight > 0 || marginBottom > 0) {
+            m = m.padding(
+                start = marginLeft.dp,
+                top = marginTop.dp,
+                end = marginRight.dp,
+                bottom = marginBottom.dp
+            )
+        }
+
         if (anchor != null) {
             if (anchor.width != null) m = m.width(anchor.width.dp)
             if (anchor.height != null) {
@@ -455,26 +653,38 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent) {
             m = m.fillMaxHeight()
         }
         
-        val bg = component.properties["Background"] as? HytaleUiColor
+        val bgValue = component.properties["Background"] ?: component.properties["@Background"]
+        val bg = bgValue as? HytaleUiColor
         if (bg != null) {
             val color = parseHexColor(bg.hex).copy(alpha = bg.alpha)
             m = m.background(color)
+        } else if (bgValue is Map<*, *>) {
+            val hex = bgValue["hex"]?.toString() ?: bgValue["Hex"]?.toString()
+            if (hex != null) {
+                val alpha = bgValue["alpha"]?.toString()?.toFloatOrNull() ?: bgValue["Alpha"]?.toString()?.toFloatOrNull() ?: 1.0f
+                m = m.background(parseHexColor(hex).copy(alpha = alpha))
+            }
         } else if (component.type == "Group" && component.children.isEmpty() && anchor?.width != null && anchor.height != null) {
              m = m.background(Color.Gray.copy(alpha = 0.1f))
         }
 
-        if (paddingFull > 0) {
-            m = m.padding(paddingFull.dp)
+        if (paddingLeft > 0 || paddingTop > 0 || paddingRight > 0 || paddingBottom > 0) {
+            m = m.padding(
+                start = paddingLeft.dp,
+                top = paddingTop.dp,
+                end = paddingRight.dp,
+                bottom = paddingBottom.dp
+            )
         }
         m
     }
 
     val modifier = if (flexWeight > 0) baseModifier.weight(flexWeight) else baseModifier
-    val layoutMode = component.properties["LayoutMode"]?.toString() ?: "Top"
+    val layoutMode = (component.properties["LayoutMode"] ?: component.properties["@LayoutMode"])?.toString() ?: "Top"
 
     when (component.type) {
         "Group" -> {
-            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center") {
+            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center" || layoutMode == "Centre") {
                 Row(
                     modifier = modifier,
                     horizontalArrangement = when (layoutMode) {
@@ -483,50 +693,72 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent) {
                         else -> Arrangement.Center
                     },
                     verticalAlignment = when (layoutMode) {
-                        "Center" -> Alignment.CenterVertically
+                        "Center", "Centre" -> Alignment.CenterVertically
+                        "Bottom" -> Alignment.Bottom
                         else -> Alignment.Top
                     }
                 ) {
-                    component.children.forEach { RenderComponentInRow(it) }
+                    component.children.forEach { RenderComponentInRow(it, onComponentClick) }
                 }
             } else {
                 Column(
                     modifier = modifier,
                     verticalArrangement = when (layoutMode) {
                         "Bottom" -> Arrangement.Bottom
-                        "Center" -> Arrangement.Center
+                        "Center", "Centre" -> Arrangement.Center
                         else -> Arrangement.Top
                     },
                     horizontalAlignment = when (layoutMode) {
-                        "Center" -> Alignment.CenterHorizontally
+                        "Center", "Centre" -> Alignment.CenterHorizontally
                         "Right" -> Alignment.End
                         else -> Alignment.Start
                     }
                 ) {
-                    component.children.forEach { RenderComponent(it) }
+                    component.children.forEach { RenderComponent(it, onComponentClick) }
                 }
             }
         }
         "Label" -> {
-            val text = component.properties["Text"]?.toString() ?: ""
-            val style = component.properties["Style"] as? Map<*, *>
+            val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
+            val style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
             RenderLabel(text, style, modifier)
         }
         "TextButton" -> {
-            val text = component.properties["Text"]?.toString() ?: ""
-            var style = component.properties["Style"] as? Map<*, *>
-            
-            if (style == null) {
-                 style = component.properties["@Style"] as? Map<*, *>
-            }
+            val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
+            var style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
 
-            val defaultStyle = (style?.get("Default") as? Map<*, *>) ?: style
+            // Unwrap style if it's wrapped in a constructor map like TextButtonStyle(...)
+            if (style != null && style.size == 1 && !style.containsKey("Default") && !style.containsKey("@Default")) {
+                val firstValue = style.values.first()
+                if (firstValue is Map<*, *>) {
+                    style = firstValue
+                }
+            }
             
-            val bg = defaultStyle?.get("Background") as? HytaleUiColor
-            val labelStyle = defaultStyle?.get("LabelStyle") as? Map<*, *> ?: defaultStyle
+            // If the style is a TextButtonStyle, it will have a "Default" key (and "Hovered", "Pressed")
+            // Or it might just be the content of "Default" if it was resolved from a global style.
+            val textButtonStyle = if (style?.containsKey("Default") == true) {
+                style["Default"] as? Map<*, *>
+            } else if (style?.containsKey("@Default") == true) {
+                style["@Default"] as? Map<*, *>
+            } else {
+                style
+            }
+            
+            val bgValue = textButtonStyle?.get("Background") ?: textButtonStyle?.get("@Background")
+            val bg = bgValue as? HytaleUiColor
+            val labelStyle = (textButtonStyle?.get("LabelStyle") ?: textButtonStyle?.get("@LabelStyle")) as? Map<*, *> ?: textButtonStyle
 
             val btnModifier = modifier.background(
-                if (bg != null) parseHexColor(bg.hex).copy(alpha = bg.alpha) else Color(0xFF2B3542)
+                if (bg != null) {
+                    parseHexColor(bg.hex).copy(alpha = bg.alpha)
+                } else if (bgValue is Map<*, *>) {
+                    val hex = bgValue["hex"]?.toString() ?: bgValue["Hex"]?.toString()
+                    val alpha = bgValue["alpha"]?.toString()?.toFloatOrNull() ?: bgValue["Alpha"]?.toString()?.toFloatOrNull() ?: 1.0f
+                    if (hex != null) parseHexColor(hex).copy(alpha = alpha) else Color(0xFF2B3542)
+                } else {
+                    Color(0xFF2B3542)
+                }
             )
             RenderLabel(text, labelStyle, btnModifier)
         }
@@ -584,7 +816,7 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent) {
             Box(modifier = modifier.background(Color.Gray.copy(alpha = 0.3f))) {
                 Column {
                     Text(component.type, fontSize = 8.sp, color = Color.LightGray)
-                    component.children.forEach { RenderComponent(it) }
+                    component.children.forEach { RenderComponent(it, onComponentClick) }
                 }
             }
         }
@@ -608,5 +840,72 @@ fun parseHexColor(hex: String): Color {
         }
     } catch (e: Exception) {
         Color.DarkGray
+    }
+}
+
+fun highlightHytaleUi(content: String): AnnotatedString {
+    return buildAnnotatedString {
+        val typeColor = Color(0xFF4A9EFF)
+        val propertyColor = Color(0xFF9CDCFE)
+        val valueColor = Color(0xFFCE9178)
+        val commentColor = Color(0xFF6A9955)
+        val idColor = Color(0xFFDCDCAA)
+
+        var i = 0
+        while (i < content.length) {
+            val char = content[i]
+            when {
+                content.startsWith("//", i) -> {
+                    val end = content.indexOf("\n", i).let { if (it == -1) content.length else it }
+                    withStyle(SpanStyle(color = commentColor)) {
+                        append(content.substring(i, end))
+                    }
+                    i = end
+                }
+                char == '"' -> {
+                    val end = content.indexOf('"', i + 1).let { if (it == -1) content.length else it + 1 }
+                    withStyle(SpanStyle(color = valueColor)) {
+                        append(content.substring(i, end))
+                    }
+                    i = end
+                }
+                char == '#' -> {
+                    var end = i + 1
+                    while (end < content.length && (content[end].isLetterOrDigit() || content[end] == '_')) end++
+                    withStyle(SpanStyle(color = idColor)) {
+                        append(content.substring(i, end))
+                    }
+                    i = end
+                }
+                char.isLetter() || char == '$' || char == '@' -> {
+                    var end = i + 1
+                    while (end < content.length && (content[end].isLetterOrDigit() || content[end] == '_' || content[end] == '.' || content[end] == '@')) end++
+                    val word = content.substring(i, end)
+                    
+                    val nextChar = content.getOrNull(end)
+                    val nextNextChar = if (end + 1 < content.length) content[end + 1] else null
+                    
+                    when {
+                        word.startsWith("$") -> {
+                            withStyle(SpanStyle(color = typeColor)) { append(word) }
+                        }
+                        word.startsWith("@") -> {
+                            withStyle(SpanStyle(color = propertyColor)) { append(word) }
+                        }
+                        nextChar == ':' || nextChar == '=' || (nextChar?.isWhitespace() == true && (nextNextChar == ':' || nextNextChar == '=')) -> {
+                            withStyle(SpanStyle(color = propertyColor)) { append(word) }
+                        }
+                        else -> {
+                            withStyle(SpanStyle(color = typeColor)) { append(word) }
+                        }
+                    }
+                    i = end
+                }
+                else -> {
+                    append(char)
+                    i++
+                }
+            }
+        }
     }
 }

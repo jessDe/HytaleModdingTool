@@ -8,13 +8,12 @@
     <name>HytaleModdingTool</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor url="https://www.yourcompany.com">LP4.dev</vendor>
+    <vendor url="https://lp4.dev">LP4.dev</vendor>
 
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        Enter short description for your plugin here.<br>
-        <em>most HTML tags may be used</em>
+        This plugin helps with Modding Hytale, a popular game developed by Hypixel.
     ]]></description>
 
     <!-- Product and plugin compatibility requirements.
@@ -29,5 +28,15 @@
         <toolWindow id="MyToolWindow" factoryClass="dev.lp4.hytalemoddingtool.MyToolWindowFactory"
                     icon="AllIcons.Toolwindows.ToolWindowPalette"/>
         <fileEditorProvider implementation="dev.lp4.hytalemoddingtool.ui.HytaleUiFileEditorProvider"/>
+
+        <fileType name="Hytale UI" implementationClass="dev.lp4.hytalemoddingtool.lang.HytaleUiFileType"
+                  extensions="ui"/>
+        <lang.syntaxHighlighterFactory language="HytaleUI"
+                                       implementationClass="dev.lp4.hytalemoddingtool.lang.HytaleUiSyntaxHighlighterFactory"/>
+        <lang.parserDefinition language="HytaleUI"
+                               implementationClass="dev.lp4.hytalemoddingtool.lang.HytaleUiParserDefinition"/>
+        <completion.contributor language="HytaleUI"
+                                implementationClass="dev.lp4.hytalemoddingtool.lang.HytaleUiCompletionContributor"/>
+        <colorProvider implementation="dev.lp4.hytalemoddingtool.lang.HytaleUiColorProvider"/>
     </extensions>
 </idea-plugin>
