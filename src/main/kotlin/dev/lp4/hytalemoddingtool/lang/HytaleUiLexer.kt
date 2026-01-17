@@ -29,6 +29,7 @@ class HytaleUiLexer : Lexer() {
         val RPAREN = IElementType("RPAREN", HytaleUiLanguage.INSTANCE)
         val HASH = IElementType("HASH", HytaleUiLanguage.INSTANCE)
         val TYPE = IElementType("TYPE", HytaleUiLanguage.INSTANCE)
+        val ELEMENT = IElementType("ELEMENT", HytaleUiLanguage.INSTANCE)
         val PROPERTY = IElementType("PROPERTY", HytaleUiLanguage.INSTANCE)
 
         val WHITE_SPACES = TokenSet.create(WHITE_SPACE)
@@ -108,6 +109,8 @@ class HytaleUiLexer : Lexer() {
                 tokenType = when {
                     text.startsWith("$") -> TYPE
                     text.startsWith("@") -> PROPERTY
+                    text in setOf("Group", "Label", "TextButton", "CheckBox", "CheckBoxWithLabel", "TextField", "NumberField", "Image", "ScrollGroup", "VBox", "HBox", "Style", "TextButtonStyle", "LabelStyle") -> ELEMENT
+                    buffer.getOrNull(currentOffset) == ':' -> PROPERTY
                     else -> IDENTIFIER
                 }
             }

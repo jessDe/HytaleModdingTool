@@ -38,5 +38,6 @@
         <completion.contributor language="HytaleUI"
                                 implementationClass="dev.lp4.hytalemoddingtool.lang.HytaleUiCompletionContributor"/>
         <colorProvider implementation="dev.lp4.hytalemoddingtool.lang.HytaleUiColorProvider"/>
+        <langCodeStyleSettingsProvider implementation="dev.lp4.hytalemoddingtool.lang.HytaleUiLanguageCodeStyleSettingsProvider"/>
     </extensions>
 </idea-plugin>

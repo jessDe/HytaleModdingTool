@@ -63,10 +63,15 @@ import dev.lp4.hytalemoddingtool.ui.model.HytaleUiColor
 
 import dev.lp4.hytalemoddingtool.ui.model.HytaleUiFile
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.foundation.border
 
 @Composable
-fun HytaleUiVisualizer(project: Project, file: VirtualFile) {
+fun HytaleUiVisualizer(project: Project, file: VirtualFile, caretOffsetFlow: StateFlow<Int>? = null) {
     val document = remember(file) { FileDocumentManager.getInstance().getDocument(file) }
+    
+    val caretOffset by (caretOffsetFlow ?: remember { MutableStateFlow(0) }).collectAsState()
     
     val navigateToCode: (Int) -> Unit = remember(project, file) {
         { offset ->
@@ -142,7 +147,7 @@ fun HytaleUiVisualizer(project: Project, file: VirtualFile) {
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                LayoutPreview(root, navigateToCode)
+                LayoutPreview(root, caretOffset, navigateToCode)
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -159,7 +164,7 @@ fun HytaleUiVisualizer(project: Project, file: VirtualFile) {
             
             uiFile?.let { fileModel ->
                 fileModel.rootComponent?.let { root ->
-                    UiComponentView(root, 0, navigateToCode)
+                    UiComponentView(root, 0, caretOffset, navigateToCode)
                 } ?: Text("No root component found", color = Color.Yellow)
             } ?: if (rawContent.isEmpty()) {
                 Text("Empty file", color = Color.Gray)
@@ -189,11 +194,15 @@ fun HytaleUiVisualizer(project: Project, file: VirtualFile) {
 }
 
 @Composable
-fun UiComponentView(component: HytaleUiComponent, depth: Int = 0, onComponentClick: (Int) -> Unit) {
+fun UiComponentView(component: HytaleUiComponent, depth: Int = 0, caretOffset: Int = 0, onComponentClick: (Int) -> Unit) {
+    val isActive = caretOffset in component.startOffset..component.endOffset
+    val isDeepestActive = isActive && component.children.none { caretOffset in it.startOffset..it.endOffset }
+
     Column(
         modifier = Modifier
             .padding(start = if (depth > 0) 12.dp else 0.dp)
             .clickable { onComponentClick(component.startOffset) }
+            .background(if (isDeepestActive) Color(0xFF4A9EFF).copy(alpha = 0.2f) else Color.Transparent)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -226,7 +235,7 @@ fun UiComponentView(component: HytaleUiComponent, depth: Int = 0, onComponentCli
         }
 
         component.children.forEach { child ->
-            UiComponentView(child, depth + 1, onComponentClick)
+            UiComponentView(child, depth + 1, caretOffset, onComponentClick)
         }
     }
 }
@@ -242,13 +251,13 @@ fun formatValue(value: Any?): String {
 }
 
 @Composable
-fun LayoutPreview(component: HytaleUiComponent, onComponentClick: (Int) -> Unit) {
+fun LayoutPreview(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column {
-            RenderComponent(component, onComponentClick)
+            RenderComponent(component, caretOffset, onComponentClick)
         }
     }
 }
@@ -320,7 +329,10 @@ fun RenderLabel(
 }
 
 @Composable
-fun ColumnScope.RenderComponent(component: HytaleUiComponent, onComponentClick: (Int) -> Unit) {
+fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit) {
+    val isActive = caretOffset in component.startOffset..component.endOffset
+    val isDeepestActive = isActive && component.children.none { caretOffset in it.startOffset..it.endOffset }
+
     val anchor = (component.properties["Anchor"] ?: component.properties["@Anchor"]) as? HytaleUiAnchor
     val flexWeight = (component.properties["FlexWeight"] ?: component.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
     
@@ -380,6 +392,10 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, onComponentClick: 
 
     val baseModifier = run {
         var m: Modifier = Modifier.clickable { onComponentClick(component.startOffset) }
+
+        if (isDeepestActive) {
+            m = m.border(1.dp, Color.Cyan)
+        }
         
         if (marginLeft > 0 || marginTop > 0 || marginRight > 0 || marginBottom > 0) {
             m = m.padding(
@@ -446,7 +462,7 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, onComponentClick: 
                         else -> Alignment.Top
                     }
                 ) {
-                    component.children.forEach { RenderComponentInRow(it, onComponentClick) }
+                    component.children.forEach { RenderComponentInRow(it, caretOffset, onComponentClick) }
                 }
             } else {
                 Column(
@@ -462,7 +478,7 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, onComponentClick: 
                         else -> Alignment.Start
                     }
                 ) {
-                    component.children.forEach { RenderComponent(it, onComponentClick) }
+                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
                 }
             }
         }
@@ -564,7 +580,7 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, onComponentClick: 
             Box(modifier = modifier.background(Color.Gray.copy(alpha = 0.3f))) {
                 Column {
                     Text(component.type, fontSize = 8.sp, color = Color.LightGray)
-                    component.children.forEach { RenderComponent(it, onComponentClick) }
+                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
                 }
             }
         }
@@ -572,7 +588,10 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, onComponentClick: 
 }
 
 @Composable
-fun RowScope.RenderComponentInRow(component: HytaleUiComponent, onComponentClick: (Int) -> Unit) {
+fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit) {
+    val isActive = caretOffset in component.startOffset..component.endOffset
+    val isDeepestActive = isActive && component.children.none { caretOffset in it.startOffset..it.endOffset }
+
     val anchor = (component.properties["Anchor"] ?: component.properties["@Anchor"]) as? HytaleUiAnchor
     val flexWeight = (component.properties["FlexWeight"] ?: component.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
     
@@ -633,6 +652,10 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, onComponentClick
     val baseModifier = run {
         var m: Modifier = Modifier.clickable { onComponentClick(component.startOffset) }
 
+        if (isDeepestActive) {
+            m = m.border(1.dp, Color.Cyan)
+        }
+        
         if (marginLeft > 0 || marginTop > 0 || marginRight > 0 || marginBottom > 0) {
             m = m.padding(
                 start = marginLeft.dp,
@@ -698,7 +721,7 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, onComponentClick
                         else -> Alignment.Top
                     }
                 ) {
-                    component.children.forEach { RenderComponentInRow(it, onComponentClick) }
+                    component.children.forEach { RenderComponentInRow(it, caretOffset, onComponentClick) }
                 }
             } else {
                 Column(
@@ -714,7 +737,7 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, onComponentClick
                         else -> Alignment.Start
                     }
                 ) {
-                    component.children.forEach { RenderComponent(it, onComponentClick) }
+                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
                 }
             }
         }
@@ -816,7 +839,7 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, onComponentClick
             Box(modifier = modifier.background(Color.Gray.copy(alpha = 0.3f))) {
                 Column {
                     Text(component.type, fontSize = 8.sp, color = Color.LightGray)
-                    component.children.forEach { RenderComponent(it, onComponentClick) }
+                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
                 }
             }
         }

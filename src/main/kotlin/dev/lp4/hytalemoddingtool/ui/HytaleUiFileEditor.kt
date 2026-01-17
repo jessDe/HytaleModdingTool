@@ -7,13 +7,17 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.jewel.bridge.JewelComposePanel
+import kotlinx.coroutines.flow.MutableStateFlow
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 
 class HytaleUiFileEditor(private val project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
 
+    private val _caretOffset = MutableStateFlow(0)
+    val caretOffset: MutableStateFlow<Int> = _caretOffset
+
     private val panel = JewelComposePanel {
-        HytaleUiVisualizer(project, file)
+        HytaleUiVisualizer(project, file, caretOffset)
     }
 
     override fun getComponent(): JComponent = panel

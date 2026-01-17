@@ -1,5 +1,7 @@
 ﻿package dev.lp4.hytalemoddingtool.ui
 
+import com.intellij.openapi.editor.event.CaretEvent
+import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorPolicy
 import com.intellij.openapi.fileEditor.FileEditorProvider
@@ -19,6 +21,13 @@ class HytaleUiFileEditorProvider : FileEditorProvider, DumbAware {
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
         val textEditor = TextEditorProvider.getInstance().createEditor(project, file) as TextEditor
         val previewEditor = HytaleUiFileEditor(project, file)
+
+        textEditor.editor.caretModel.addCaretListener(object : CaretListener {
+            override fun caretPositionChanged(event: CaretEvent) {
+                previewEditor.caretOffset.value = event.caret?.offset ?: 0
+            }
+        })
+
         return TextEditorWithPreview(textEditor, previewEditor, "Hytale UI Preview", TextEditorWithPreview.Layout.SHOW_EDITOR_AND_PREVIEW)
     }
 

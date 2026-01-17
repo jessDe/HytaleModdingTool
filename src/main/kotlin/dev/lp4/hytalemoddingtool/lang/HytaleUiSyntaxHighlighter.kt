@@ -11,6 +11,7 @@ import com.intellij.psi.tree.IElementType
 class HytaleUiSyntaxHighlighter : SyntaxHighlighterBase() {
     companion object {
         val TYPE = createTextAttributesKey("HYTALE_UI_TYPE", DefaultLanguageHighlighterColors.KEYWORD)
+        val ELEMENT = createTextAttributesKey("HYTALE_UI_ELEMENT", DefaultLanguageHighlighterColors.FUNCTION_DECLARATION)
         val PROPERTY = createTextAttributesKey("HYTALE_UI_PROPERTY", DefaultLanguageHighlighterColors.INSTANCE_FIELD)
         val STRING = createTextAttributesKey("HYTALE_UI_STRING", DefaultLanguageHighlighterColors.STRING)
         val NUMBER = createTextAttributesKey("HYTALE_UI_NUMBER", DefaultLanguageHighlighterColors.NUMBER)
@@ -21,6 +22,7 @@ class HytaleUiSyntaxHighlighter : SyntaxHighlighterBase() {
         val BAD_CHARACTER = createTextAttributesKey("HYTALE_UI_BAD_CHARACTER", HighlighterColors.BAD_CHARACTER)
 
         private val TYPE_KEYS = arrayOf(TYPE)
+        private val ELEMENT_KEYS = arrayOf(ELEMENT)
         private val PROPERTY_KEYS = arrayOf(PROPERTY)
         private val STRING_KEYS = arrayOf(STRING)
         private val NUMBER_KEYS = arrayOf(NUMBER)
@@ -36,6 +38,7 @@ class HytaleUiSyntaxHighlighter : SyntaxHighlighterBase() {
     override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> {
         return when (tokenType) {
             HytaleUiLexer.TYPE -> TYPE_KEYS
+            HytaleUiLexer.ELEMENT -> ELEMENT_KEYS
             HytaleUiLexer.PROPERTY -> PROPERTY_KEYS
             HytaleUiLexer.STRING -> STRING_KEYS
             HytaleUiLexer.NUMBER -> NUMBER_KEYS
