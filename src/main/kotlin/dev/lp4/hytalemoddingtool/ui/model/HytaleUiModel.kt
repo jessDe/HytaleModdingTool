@@ -19,7 +19,11 @@ data class HytaleUiAnchor(
     val width: Int? = null,
     val height: Int? = null,
     val full: Int? = null,
-    val flexWeight: Float? = null
+    val flexWeight: Float? = null,
+    val top: Int? = null,
+    val bottom: Int? = null,
+    val left: Int? = null,
+    val right: Int? = null
 )
 
 data class HytaleUiColor(

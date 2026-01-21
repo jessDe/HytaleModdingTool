@@ -185,7 +185,8 @@ class HytaleUiParser(private val content: String) {
                 consume(")")
                 
                 // Try to map to HytaleUiAnchor if it looks like one
-                if (map.containsKey("Width") || map.containsKey("Height") || map.containsKey("Full") || map.containsKey("FlexWeight")) {
+                if (map.containsKey("Width") || map.containsKey("Height") || map.containsKey("Full") || map.containsKey("FlexWeight") ||
+                    map.containsKey("Top") || map.containsKey("Bottom") || map.containsKey("Left") || map.containsKey("Right")) {
                     // Check if it's likely NOT an anchor (e.g., just Full without Width/Height in a context that might be Padding)
                     // But for now, we'll keep the conversion and let the visualizer handle it.
                     // However, we should only convert if it has Anchor-specific keys or is explicitly an Anchor() constructor.
@@ -193,7 +194,11 @@ class HytaleUiParser(private val content: String) {
                         width = map["Width"]?.toString()?.toIntOrNull() ?: map["@Width"]?.toString()?.toIntOrNull(),
                         height = map["Height"]?.toString()?.toIntOrNull() ?: map["@Height"]?.toString()?.toIntOrNull(),
                         full = map["Full"]?.toString()?.toIntOrNull() ?: map["@Full"]?.toString()?.toIntOrNull(),
-                        flexWeight = map["FlexWeight"]?.toString()?.toFloatOrNull() ?: map["@FlexWeight"]?.toString()?.toFloatOrNull()
+                        flexWeight = map["FlexWeight"]?.toString()?.toFloatOrNull() ?: map["@FlexWeight"]?.toString()?.toFloatOrNull(),
+                        top = map["Top"]?.toString()?.toIntOrNull() ?: map["@Top"]?.toString()?.toIntOrNull(),
+                        bottom = map["Bottom"]?.toString()?.toIntOrNull() ?: map["@Bottom"]?.toString()?.toIntOrNull(),
+                        left = map["Left"]?.toString()?.toIntOrNull() ?: map["@Left"]?.toString()?.toIntOrNull(),
+                        right = map["Right"]?.toString()?.toIntOrNull() ?: map["@Right"]?.toString()?.toIntOrNull()
                     )
                 } else {
                     map

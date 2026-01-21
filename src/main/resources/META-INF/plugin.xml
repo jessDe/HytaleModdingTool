@@ -30,7 +30,7 @@
         <fileEditorProvider implementation="dev.lp4.hytalemoddingtool.ui.HytaleUiFileEditorProvider"/>
 
         <fileType name="Hytale UI" implementationClass="dev.lp4.hytalemoddingtool.lang.HytaleUiFileType"
-                  extensions="ui"/>
+                  extensions="ui" language="HytaleUI"/>
         <lang.syntaxHighlighterFactory language="HytaleUI"
                                        implementationClass="dev.lp4.hytalemoddingtool.lang.HytaleUiSyntaxHighlighterFactory"/>
         <lang.parserDefinition language="HytaleUI"

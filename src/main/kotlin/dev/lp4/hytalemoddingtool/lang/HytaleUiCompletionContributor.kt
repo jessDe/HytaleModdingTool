@@ -18,18 +18,64 @@ class HytaleUiCompletionContributor : CompletionContributor() {
                     result: CompletionResultSet
                 ) {
                     val componentTypes = listOf(
-                        "Group", "Label", "TextButton", "CheckBox", "CheckBoxWithLabel",
-                        "TextField", "NumberField", "Image", "ScrollGroup", "VBox", "HBox"
+                        "ActionButton", "ActionButtonContainer", "ActionButtonSeparator", "AssetImage", "BackButton",
+                        "BackgroundImage", "BlockSelector", "BlockSelectorStyle", "Button", "ButtonStyle",
+                        "CenteredTitleLabel", "CharacterPreviewComponent", "CheckBox", "CheckBoxStyle",
+                        "CircularProgressBar", "ColorPickerDropdownBoxStyle", "ColorPickerStyle", "ColumnButton",
+                        "CompactTextField", "Container", "Content", "ContentSeparator", "DecoratedContainer",
+                        "DefaultSpinner", "DestructiveTextButton", "Divider", "DoubleArrowKeyHotkeyRow", "DropdownBox",
+                        "DropdownBoxStyle", "EditionCard", "FileDropdownBoxStyle", "FloatSliderNumberField", "Group",
+                        "HeaderSearch", "HotkeyLabel", "HotkeyRow", "Icon", "InputFieldStyle", "ItemGrid",
+                        "ItemGridStyle", "ItemPreviewComponent", "Label", "LabelAffix", "LabelStyle", "LabeledCheckBox",
+                        "Legend", "MenuItem", "MultilineTextField", "NumberField", "OfflineOverlay", "Overlay", "Page",
+                        "Pages", "Panel", "PanelSeparatorFancy", "PanelTitle", "PatchStyle", "PlayerPreviewComponent",
+                        "PopupMenuLayerStyle", "PrimaryButton", "PrimaryTextButton", "ProgressBar", "ReorderableListGrip",
+                        "Row", "RowHintContainer", "RowLabel", "RowLabelContainer", "SceneBlur", "ScrollbarStyle",
+                        "SecondaryButton", "SecondaryTextButton", "SectionContainer", "SectionHeader", "Sep",
+                        "Separator", "Slider", "SliderNumberField", "SliderStyle", "SmallSecondaryTextButton", "Sprite",
+                        "StatNameLabel", "StatNameValueLabel", "Tab", "TabButton", "TabNavigation", "TabNavigationStyle",
+                        "TabSeparator", "TagTextButton", "TertiaryTextButton", "TextButton", "TextButtonStyle",
+                        "TextField", "TextTooltipStyle", "Title", "TitleLabel", "ToggleButton", "ToolButton",
+                        "VerticalActionButtonSeparator", "VerticalSeparator", "Wrapper"
                     )
                     componentTypes.forEach {
                         result.addElement(LookupElementBuilder.create(it))
                     }
 
                     val commonProperties = listOf(
-                        "Anchor", "Background", "Padding", "Margin", "LayoutMode", "FlexWeight",
-                        "Text", "Style", "HorizontalAlignment", "VerticalAlignment", "FontSize",
-                        "TextColor", "RenderBold", "RenderUppercase", "LetterSpacing", "Visible",
-                        "Enabled", "Id", "Tooltip", "OnPress", "OnValueChange"
+                        "ActionName", "Activate", "Alignment", "AllowUnselection", "Anchor", "AreItemsDraggable",
+                        "AutoGrow", "AutoScrollDown", "Background", "Bar", "BarTexturePath", "BindingLabelStyle",
+                        "Border", "Bottom", "BrokenSlotBackgroundOverlay", "BrokenSlotIconOverlay", "ButtonBackground",
+                        "ButtonFill", "ButtonPadding", "ButtonStyle", "Capacity", "ChangedSound", "Checked",
+                        "CheckedStyle", "ClearButtonStyle", "CollapseSound", "CollapsedWidth", "Color",
+                        "ColorPickerStyle", "ContentPadding", "Count", "Decoration", "Default", "DefaultBackground",
+                        "DefaultItemIcon", "DefaultLabelStyle", "Direction", "Disabled", "DraggedHandle",
+                        "DurabilityBar", "DurabilityBarAnchor", "DurabilityBarBackground", "EffectHeight",
+                        "EffectOffset", "EffectTexturePath", "EffectWidth", "EntryHeight", "EntryIconHeight",
+                        "EntryIconWidth", "EntryLabelStyle", "EntrySounds", "ExpandSound", "ExpandedWidth",
+                        "FlexWeight", "FontName", "FontSize", "Format", "Frame", "FramesPerSecond", "Full", "Handle",
+                        "Height", "HitTestVisible", "Horizontal", "HorizontalAlignment", "HorizontalBorder",
+                        "HorizontalPadding", "Hovered", "HoveredBackground", "HoveredHandle", "HoveredLabelStyle",
+                        "Icon", "IconAnchor", "IconHeight", "IconOpacity", "IconSelected", "IconTexturePath",
+                        "IconWidth", "Id", "Image", "ImageUW", "InfoDisplay", "InputBindingKey", "InputBindingKeyPrefix",
+                        "IsReadOnly", "ItemGridStyle", "ItemScale", "ItemStackActivateSound", "KeepScrollPosition",
+                        "KeyBindingLabel", "LabelMaskTexturePath", "LabelStyle", "LayoutMode", "Left", "LetterSpacing",
+                        "MaskTexturePath", "Max", "MaxLength", "MaxPitch", "MaxSelection", "MaxValue",
+                        "MaxVisibleLines", "MaxWidth", "Min", "MinPitch", "MinValue", "MinWidth", "MouseHover",
+                        "NumberFieldContainerAnchor", "NumberFieldMaxDecimalPlaces", "NumberFieldStyle", "Offset",
+                        "OnlyVisibleWhenHovered", "OpacitySelectorBackground", "OutlineColor", "Padding", "PanelAlign",
+                        "PanelScrollbarStyle", "PanelTitleText", "PanelWidth", "PasswordChar", "PerRow",
+                        "PlaceholderStyle", "PlaceholderText", "PopupStyle", "Pressed", "PressedBackground",
+                        "PressedLabelStyle", "QuantityPopupSlotOverlay", "RenderBold", "RenderItalics",
+                        "RenderItemQualityBackground", "RenderUppercase", "Right", "Scale", "ScrollbarStyle",
+                        "SelectedButtonStyle", "SelectedEntryIconBackground", "SelectedEntryLabelStyle",
+                        "SelectedStyle", "SelectedTab", "SelectedTabStyle", "ShowLabel", "ShowScrollbar", "Size",
+                        "SliderStyle", "SlotBackground", "SlotDeleteIcon", "SlotDropIcon", "SlotHoverOverlay",
+                        "SlotIconSize", "SlotSize", "SlotSpacing", "SlotsPerRow", "Sounds", "Spacing", "Step", "Style",
+                        "TabSounds", "TabStyle", "Text", "TextColor", "TextFieldDecoration", "TextSpans",
+                        "TextTooltipStyle", "TexturePath", "TooltipStyle", "TooltipText", "TooltipTextSpans", "Top",
+                        "Unchecked", "Value", "Vertical", "VerticalAlignment", "VerticalBorder", "Visible", "Volume",
+                        "Width", "Wrap"
                     )
                     commonProperties.forEach {
                         result.addElement(LookupElementBuilder.create(it))

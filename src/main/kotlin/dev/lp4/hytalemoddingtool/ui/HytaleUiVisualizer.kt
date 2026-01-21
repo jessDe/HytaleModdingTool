@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -66,6 +67,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.asComposeImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.foundation.Image
+import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.vfs.VfsUtil
+import java.io.File
 
 @Composable
 fun HytaleUiVisualizer(project: Project, file: VirtualFile, caretOffsetFlow: StateFlow<Int>? = null) {
@@ -147,7 +156,7 @@ fun HytaleUiVisualizer(project: Project, file: VirtualFile, caretOffsetFlow: Sta
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                LayoutPreview(root, caretOffset, navigateToCode)
+                LayoutPreview(root, caretOffset, navigateToCode, project, file)
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -242,7 +251,18 @@ fun UiComponentView(component: HytaleUiComponent, depth: Int = 0, caretOffset: I
 
 fun formatValue(value: Any?): String {
     return when (value) {
-        is HytaleUiAnchor -> "Anchor(W:${value.width}, H:${value.height}, FW:${value.flexWeight})"
+        is HytaleUiAnchor -> {
+            val parts = mutableListOf<String>()
+            value.width?.let { parts.add("W:$it") }
+            value.height?.let { parts.add("H:$it") }
+            value.full?.let { parts.add("F:$it") }
+            value.flexWeight?.let { parts.add("FW:$it") }
+            value.top?.let { parts.add("T:$it") }
+            value.bottom?.let { parts.add("B:$it") }
+            value.left?.let { parts.add("L:$it") }
+            value.right?.let { parts.add("R:$it") }
+            "Anchor(${parts.joinToString(", ")})"
+        }
         is HytaleUiColor -> "Color(${value.hex}, A:${value.alpha})"
         is Map<*, *> -> "(" + value.entries.joinToString(", ") { "${it.key}: ${formatValue(it.value)}" } + ")"
         is List<*> -> "[" + value.joinToString(", ") { formatValue(it) } + "]"
@@ -251,14 +271,11 @@ fun formatValue(value: Any?): String {
 }
 
 @Composable
-fun LayoutPreview(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit) {
+fun LayoutPreview(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit, project: Project, file: VirtualFile) {
     Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column {
-            RenderComponent(component, caretOffset, onComponentClick)
-        }
+        RenderComponent(component, caretOffset, onComponentClick, project, file)
     }
 }
 
@@ -268,6 +285,13 @@ fun RenderLabel(
     style: Map<*, *>?,
     modifier: Modifier
 ) {
+    // Check if the text is a localized string key and format it for the preview
+    val displayText = if (text.startsWith("%")) {
+        text.substringAfterLast(".").replaceFirstChar { it.uppercase() }
+    } else {
+        text
+    }
+
     // Unwrap style if it's wrapped in a constructor map like Style(...) or LabelStyle(...)
     var effectiveStyle = style
     if (effectiveStyle != null && effectiveStyle.size == 1 && !effectiveStyle.containsKey("HorizontalAlignment") && !effectiveStyle.containsKey("@HorizontalAlignment")) {
@@ -313,7 +337,7 @@ fun RenderLabel(
         contentAlignment = alignment
     ) {
         Text(
-            text = if (isUppercase) text.uppercase() else text,
+            text = if (isUppercase) displayText.uppercase() else displayText,
             color = finalTextColor,
             fontSize = fontSize.sp,
             textAlign = when (hAlign) {
@@ -329,92 +353,148 @@ fun RenderLabel(
 }
 
 @Composable
-fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit) {
+fun RenderComponent(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit, project: Project, file: VirtualFile) {
+    RenderComponentWithModifier(component, caretOffset, onComponentClick, Modifier, project, file)
+}
+
+@Composable
+fun RenderComponentWithModifier(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit, inheritedModifier: Modifier, project: Project, file: VirtualFile, isInLayout: Boolean = false) {
+    Box(modifier = Modifier) {
+        RenderComponentInternal(component, caretOffset, onComponentClick, inheritedModifier, project, file, isInLayout)
+    }
+}
+
+@Composable
+fun androidx.compose.foundation.layout.BoxScope.RenderComponentInternal(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit, inheritedModifier: Modifier, project: Project, file: VirtualFile, isInLayout: Boolean = false) {
     val isActive = caretOffset in component.startOffset..component.endOffset
     val isDeepestActive = isActive && component.children.none { caretOffset in it.startOffset..it.endOffset }
 
     val anchor = (component.properties["Anchor"] ?: component.properties["@Anchor"]) as? HytaleUiAnchor
-    val flexWeight = (component.properties["FlexWeight"] ?: component.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
     
-    val paddingMap = (component.properties["Padding"] ?: component.properties["@Padding"])
-    val paddingFull = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Full"] ?: paddingMap["@Full"])?.toString()?.toIntOrNull() ?: 0
-        is HytaleUiAnchor -> paddingMap.full ?: 0
-        else -> 0
-    }
-    val paddingTop = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Top"] ?: paddingMap["@Top"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
-        else -> paddingFull
-    }
-    val paddingBottom = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Bottom"] ?: paddingMap["@Bottom"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
-        else -> paddingFull
-    }
-    val paddingLeft = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Left"] ?: paddingMap["@Left"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
-        else -> paddingFull
-    }
-    val paddingRight = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Right"] ?: paddingMap["@Right"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
-        else -> paddingFull
+    var componentModifier: Modifier = Modifier
+    anchor?.let {
+        // Handle Alignment in Box containers (like the root container)
+        val alignment = when {
+            it.left != null && it.top != null -> Alignment.TopStart
+            it.right != null && it.top != null -> Alignment.TopEnd
+            it.left != null && it.bottom != null -> Alignment.BottomStart
+            it.right != null && it.bottom != null -> Alignment.BottomEnd
+            it.left != null -> Alignment.CenterStart
+            it.right != null -> Alignment.CenterEnd
+            it.top != null -> Alignment.TopCenter
+            it.bottom != null -> Alignment.BottomCenter
+            else -> null
+        }
+        
+        if (alignment != null) {
+            componentModifier = componentModifier.then(Modifier.align(alignment))
+        }
+
+        // Apply Anchor offsets as padding BEFORE size so they act as margins relative to the alignment
+        if (!isInLayout) {
+            if (it.top != null) componentModifier = componentModifier.padding(top = it.top.dp)
+            if (it.bottom != null) componentModifier = componentModifier.padding(bottom = it.bottom.dp)
+            if (it.left != null) componentModifier = componentModifier.padding(start = it.left.dp)
+            if (it.right != null) componentModifier = componentModifier.padding(end = it.right.dp)
+        }
+
+        if (it.width != null) componentModifier = componentModifier.width(it.width.dp)
+        
+        if (it.height != null) componentModifier = componentModifier.height(it.height.dp)
     }
 
+    // Process Margin (outer padding)
     val marginMap = (component.properties["Margin"] ?: component.properties["@Margin"])
     val marginFull = when (marginMap) {
         is Map<*, *> -> (marginMap["Full"] ?: marginMap["@Full"])?.toString()?.toIntOrNull() ?: 0
-        is HytaleUiAnchor -> marginMap.full ?: 0
+        is HytaleUiAnchor -> marginFullFromAnchor(marginMap)
+        is Number -> marginMap.toInt()
         else -> 0
     }
-    val marginTop = when (marginMap) {
-        is Map<*, *> -> (marginMap["Top"] ?: marginMap["@Top"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
+    val marginHorizontal = when (marginMap) {
+        is Map<*, *> -> (marginMap["Horizontal"] ?: marginMap["@Horizontal"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginHorizontalFromAnchor(marginMap, marginFull)
         else -> marginFull
+    }
+    val marginVertical = when (marginMap) {
+        is Map<*, *> -> (marginMap["Vertical"] ?: marginMap["@Vertical"])?.toString()?.toIntOrNull() ?: marginFull
+        is HytaleUiAnchor -> marginVerticalFromAnchor(marginMap, marginFull)
+        else -> marginFull
+    }
+    val marginTop = when (marginMap) {
+        is Map<*, *> -> (marginMap["Top"] ?: marginMap["@Top"])?.toString()?.toIntOrNull() ?: marginVertical
+        is HytaleUiAnchor -> marginMap.top ?: marginVertical
+        else -> marginVertical
     }
     val marginBottom = when (marginMap) {
-        is Map<*, *> -> (marginMap["Bottom"] ?: marginMap["@Bottom"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
-        else -> marginFull
+        is Map<*, *> -> (marginMap["Bottom"] ?: marginMap["@Bottom"])?.toString()?.toIntOrNull() ?: marginVertical
+        is HytaleUiAnchor -> marginMap.bottom ?: marginVertical
+        else -> marginVertical
     }
     val marginLeft = when (marginMap) {
-        is Map<*, *> -> (marginMap["Left"] ?: marginMap["@Left"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
-        else -> marginFull
+        is Map<*, *> -> (marginMap["Left"] ?: marginMap["@Left"])?.toString()?.toIntOrNull() ?: marginHorizontal
+        is HytaleUiAnchor -> marginMap.left ?: marginHorizontal
+        else -> marginHorizontal
     }
     val marginRight = when (marginMap) {
-        is Map<*, *> -> (marginMap["Right"] ?: marginMap["@Right"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
-        else -> marginFull
+        is Map<*, *> -> (marginMap["Right"] ?: marginMap["@Right"])?.toString()?.toIntOrNull() ?: marginHorizontal
+        is HytaleUiAnchor -> marginMap.right ?: marginHorizontal
+        else -> marginHorizontal
+    }
+
+    if (marginLeft > 0 || marginTop > 0 || marginRight > 0 || marginBottom > 0) {
+        componentModifier = componentModifier.padding(
+            start = marginLeft.dp,
+            top = marginTop.dp,
+            end = marginRight.dp,
+            bottom = marginBottom.dp
+        )
+    }
+
+    // Process Padding (inner padding)
+    val paddingMap = (component.properties["Padding"] ?: component.properties["@Padding"])
+    val paddingFull = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Full"] ?: paddingMap["@Full"])?.toString()?.toIntOrNull() ?: 0
+        is HytaleUiAnchor -> paddingFullFromAnchor(paddingMap)
+        is Number -> paddingMap.toInt()
+        else -> 0
+    }
+    val paddingHorizontal = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Horizontal"] ?: paddingMap["@Horizontal"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingHorizontalFromAnchor(paddingMap, paddingFull)
+        else -> paddingFull
+    }
+    val paddingVertical = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Vertical"] ?: paddingMap["@Vertical"])?.toString()?.toIntOrNull() ?: paddingFull
+        is HytaleUiAnchor -> paddingVerticalFromAnchor(paddingMap, paddingFull)
+        else -> paddingFull
+    }
+    val paddingTop = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Top"] ?: paddingMap["@Top"])?.toString()?.toIntOrNull() ?: paddingVertical
+        is HytaleUiAnchor -> paddingMap.top ?: paddingVertical
+        else -> paddingVertical
+    }
+    val paddingBottom = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Bottom"] ?: paddingMap["@Bottom"])?.toString()?.toIntOrNull() ?: paddingVertical
+        is HytaleUiAnchor -> paddingMap.bottom ?: paddingVertical
+        else -> paddingVertical
+    }
+    val paddingLeft = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Left"] ?: paddingMap["@Left"])?.toString()?.toIntOrNull() ?: paddingHorizontal
+        is HytaleUiAnchor -> paddingMap.left ?: paddingHorizontal
+        else -> paddingHorizontal
+    }
+    val paddingRight = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Right"] ?: paddingMap["@Right"])?.toString()?.toIntOrNull() ?: paddingHorizontal
+        is HytaleUiAnchor -> paddingMap.right ?: paddingHorizontal
+        else -> paddingHorizontal
     }
 
     val baseModifier = run {
-        var m: Modifier = Modifier.clickable { onComponentClick(component.startOffset) }
+        var m: Modifier = inheritedModifier.then(componentModifier).clickable { onComponentClick(component.startOffset) }
 
         if (isDeepestActive) {
             m = m.border(1.dp, Color.Cyan)
-        }
-        
-        if (marginLeft > 0 || marginTop > 0 || marginRight > 0 || marginBottom > 0) {
-            m = m.padding(
-                start = marginLeft.dp,
-                top = marginTop.dp,
-                end = marginRight.dp,
-                bottom = marginBottom.dp
-            )
-        }
-
-        if (anchor != null) {
-            if (anchor.width != null) {
-                m = m.width(anchor.width.dp)
-            } else if (flexWeight <= 0f) {
-                m = m.fillMaxWidth()
-            }
-            if (anchor.height != null) m = m.height(anchor.height.dp)
-        } else if (flexWeight <= 0f) {
-            m = m.fillMaxWidth()
         }
         
         val bgValue = component.properties["Background"] ?: component.properties["@Background"]
@@ -443,26 +523,104 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, 
         m
     }
 
-    val modifier = if (flexWeight > 0) baseModifier.weight(flexWeight) else baseModifier
+    val modifier = baseModifier
     val layoutMode = (component.properties["LayoutMode"] ?: component.properties["@LayoutMode"])?.toString() ?: "Top"
+    val flexWeight = (component.properties["FlexWeight"] ?: component.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: anchor?.flexWeight ?: 0f
 
-    when (component.type) {
-        "Group" -> {
-            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center" || layoutMode == "Centre") {
+    val bgValue2 = component.properties["Background"] ?: component.properties["@Background"]
+    val texturePath = when (bgValue2) {
+        is String -> bgValue2
+        is Map<*, *> -> (bgValue2["TexturePath"] ?: bgValue2["@TexturePath"] ?: bgValue2["Texture"] ?: bgValue2["@Texture"])?.toString()
+        else -> null
+    }
+
+    if (texturePath != null) {
+        RenderImage(texturePath, project, file, Modifier.matchParentSize())
+    }
+
+    val labelTypes = listOf(
+        "Label", "CenteredTitleLabel", "HotkeyLabel", "LabelAffix", "PanelTitle", 
+        "RowLabel", "StatNameLabel", "StatNameValueLabel", "TitleLabel"
+    )
+    
+    val buttonTypes = listOf(
+        "Button", "ActionButton", "BackButton", "ColumnButton", "DestructiveTextButton", 
+        "PrimaryButton", "PrimaryTextButton", "SecondaryButton", "SecondaryTextButton", 
+        "SmallSecondaryTextButton", "TabButton", "TagTextButton", "TertiaryTextButton", 
+        "ToggleButton", "ToolButton", "TextButton", "MenuItem"
+    )
+
+    val contentAlignment = run {
+        val hAlign = when {
+            anchor?.left != null -> Alignment.Start
+            anchor?.right != null -> Alignment.End
+            else -> Alignment.CenterHorizontally
+        }
+        val vAlign = when {
+            anchor?.top != null -> Alignment.Top
+            anchor?.bottom != null -> Alignment.Bottom
+            else -> Alignment.CenterVertically
+        }
+        
+        val alignment = when {
+            anchor?.left != null && anchor.top != null -> Alignment.TopStart
+            anchor?.right != null && anchor.top != null -> Alignment.TopEnd
+            anchor?.left != null && anchor.bottom != null -> Alignment.BottomStart
+            anchor?.right != null && anchor.bottom != null -> Alignment.BottomEnd
+            anchor?.left != null -> Alignment.CenterStart
+            anchor?.right != null -> Alignment.CenterEnd
+            anchor?.top != null -> Alignment.TopCenter
+            anchor?.bottom != null -> Alignment.BottomCenter
+            else -> Alignment.Center
+        }
+        alignment
+    }
+
+    when {
+        component.type == "Group" || component.type == "Container" || component.type == "Content" || 
+        component.type == "DecoratedContainer" || component.type == "Overlay" || component.type == "Page" || 
+        component.type == "Pages" || component.type == "Panel" || component.type == "SectionContainer" || 
+        component.type == "Wrapper" || component.type == "ActionButtonContainer" || component.type == "Row" ||
+        component.type == "RowHintContainer" || component.type == "RowLabelContainer" || component.type == "Title" ||
+        component.type == "HeaderSearch" || component.type == "Legend" -> {
+            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center" || layoutMode == "Centre" || component.type == "Row") {
                 Row(
                     modifier = modifier,
                     horizontalArrangement = when (layoutMode) {
                         "Left" -> Arrangement.Start
                         "Right" -> Arrangement.End
-                        else -> Arrangement.Center
+                        "Center", "Centre" -> Arrangement.Center
+                        else -> Arrangement.Start
                     },
-                    verticalAlignment = when (layoutMode) {
-                        "Center", "Centre" -> Alignment.CenterVertically
-                        "Bottom" -> Alignment.Bottom
-                        else -> Alignment.Top
-                    }
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    component.children.forEach { RenderComponentInRow(it, caretOffset, onComponentClick) }
+                    component.children.forEach { child ->
+                        val childAnchor = (child.properties["Anchor"] ?: child.properties["@Anchor"]) as? HytaleUiAnchor
+                        val childFlexWeight = (child.properties["FlexWeight"] ?: child.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: childAnchor?.flexWeight ?: 0f
+                        
+                        var childModifier: Modifier = if (childFlexWeight > 0) Modifier.weight(childFlexWeight) else Modifier
+                        
+                        // Handle spacing/offsets via padding in Row/Column
+                        if (childAnchor != null) {
+                            childModifier = childModifier.padding(
+                                start = (childAnchor.left ?: 0).dp,
+                                top = (childAnchor.top ?: 0).dp,
+                                end = (childAnchor.right ?: 0).dp,
+                                bottom = (childAnchor.bottom ?: 0).dp
+                            )
+                        }
+
+                        if (childAnchor?.height == null && childAnchor?.full == null) {
+                            childModifier = childModifier.fillMaxHeight()
+                        }
+                        
+                        RenderComponentWithModifier(
+                            child, caretOffset, onComponentClick, 
+                            childModifier,
+                            project, file,
+                            isInLayout = true
+                        )
+                    }
                 }
             } else {
                 Column(
@@ -478,20 +636,45 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, 
                         else -> Alignment.Start
                     }
                 ) {
-                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
+                    component.children.forEach { child ->
+                        val childAnchor = (child.properties["Anchor"] ?: child.properties["@Anchor"]) as? HytaleUiAnchor
+                        val childFlexWeight = (child.properties["FlexWeight"] ?: child.properties["@FlexWeight"])?.toString()?.toFloatOrNull() ?: childAnchor?.flexWeight ?: 0f
+                        
+                        var childModifier: Modifier = if (childFlexWeight > 0) Modifier.weight(childFlexWeight) else Modifier
+                        
+                        // Handle spacing/offsets via padding in Row/Column
+                        if (childAnchor != null) {
+                            childModifier = childModifier.padding(
+                                start = (childAnchor.left ?: 0).dp,
+                                top = (childAnchor.top ?: 0).dp,
+                                end = (childAnchor.right ?: 0).dp,
+                                bottom = (childAnchor.bottom ?: 0).dp
+                            )
+                        }
+
+                        if (childAnchor?.width == null && childAnchor?.full == null) {
+                            childModifier = childModifier.fillMaxWidth()
+                        }
+
+                        RenderComponentWithModifier(
+                            child, caretOffset, onComponentClick, 
+                            childModifier,
+                            project, file,
+                            isInLayout = true
+                        )
+                    }
                 }
             }
         }
-        "Label" -> {
+        component.type in labelTypes -> {
             val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
             val style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
             RenderLabel(text, style, modifier)
         }
-        "TextButton" -> {
+        component.type in buttonTypes -> {
             val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
             var style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
 
-            // Unwrap style if it's wrapped in a constructor map like TextButtonStyle(...)
             if (style != null && style.size == 1 && !style.containsKey("Default") && !style.containsKey("@Default")) {
                 val firstValue = style.values.first()
                 if (firstValue is Map<*, *>) {
@@ -499,8 +682,6 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, 
                 }
             }
             
-            // If the style is a TextButtonStyle, it will have a "Default" key (and "Hovered", "Pressed")
-            // Or it might just be the content of "Default" if it was resolved from a global style.
             val textButtonStyle = if (style?.containsKey("Default") == true) {
                 style["Default"] as? Map<*, *>
             } else if (style?.containsKey("@Default") == true) {
@@ -524,9 +705,26 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, 
                     Color(0xFF2B3542)
                 }
             )
-            RenderLabel(text, labelStyle, btnModifier)
+            
+            val iconValue = component.properties["Icon"] ?: component.properties["@Icon"]
+            val iconAnchor = (component.properties["IconAnchor"] ?: component.properties["@IconAnchor"]) as? HytaleUiAnchor
+            var iconModifier: Modifier = Modifier.size(16.dp)
+            if (iconAnchor != null) {
+                if (iconAnchor.width != null) iconModifier = iconModifier.width(iconAnchor.width.dp)
+                if (iconAnchor.height != null) iconModifier = iconModifier.height(iconAnchor.height.dp)
+            }
+
+            if (iconValue != null) {
+                Row(modifier = btnModifier, verticalAlignment = Alignment.CenterVertically) {
+                    Box(iconModifier.background(Color.White.copy(alpha = 0.3f)))
+                    Spacer(Modifier.width(4.dp))
+                    RenderLabel(text, labelStyle, Modifier)
+                }
+            } else {
+                RenderLabel(text, labelStyle, btnModifier)
+            }
         }
-        "CheckBox", "CheckBoxWithLabel" -> {
+        component.type == "CheckBox" || component.type == "CheckBoxWithLabel" || component.type == "LabeledCheckBox" -> {
             val text = (component.properties["@Text"] ?: component.properties["Text"])?.toString() ?: ""
             val checked = (component.properties["@Checked"] ?: component.properties["Checked"])?.toString()?.toBoolean() ?: false
             
@@ -543,44 +741,98 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, 
             ) {
                 Box(
                     modifier = Modifier
-                        .width(16.dp)
-                        .height(16.dp)
-                        .background(Color(0xFF2B3542))
-                        .padding(2.dp)
-                ) {
-                    if (checked) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF4A9EFF)))
-                    }
-                }
+                        .size(20.dp)
+                        .border(1.dp, Color.Gray)
+                        .background(if (checked) Color.Cyan else Color.Transparent)
+                )
                 if (text.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = text, color = Color.White, fontSize = 13.sp)
+                    RenderLabel(text, null, Modifier)
                 }
             }
         }
-        "TextField" -> {
-            val placeholder = component.properties["PlaceholderText"]?.toString() ?: ""
+        component.type == "TextField" || component.type == "NumberField" || component.type == "MultilineTextField" || component.type == "CompactTextField" -> {
+            val placeholder = (component.properties["PlaceholderText"] ?: component.properties["@PlaceholderText"])?.toString() ?: ""
             Box(
-                modifier = modifier.background(Color(0xFF0A1119)).padding(horizontal = 8.dp),
+                modifier = modifier
+                    .height(30.dp)
+                    .background(Color.Black.copy(alpha = 0.2f))
+                    .border(1.dp, Color.Gray),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(text = placeholder, color = Color.Gray, fontSize = 13.sp)
+                Text(
+                    text = placeholder,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
             }
         }
-        "NumberField" -> {
-            val value = component.properties["Value"]?.toString() ?: "0"
+        component.type == "ProgressBar" || component.type == "CircularProgressBar" -> {
+            val value = (component.properties["Value"] ?: component.properties["@Value"])?.toString()?.toFloatOrNull() ?: 0.5f
             Box(
-                modifier = modifier.background(Color(0xFF0A1119)).padding(horizontal = 8.dp),
-                contentAlignment = Alignment.CenterEnd
+                modifier = modifier
+                    .height(20.dp)
+                    .background(Color.DarkGray)
             ) {
-                Text(text = value, color = Color.White, fontSize = 13.sp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(value.coerceIn(0f, 1f))
+                        .background(Color.Green)
+                )
             }
+        }
+        component.type == "Slider" || component.type == "SliderNumberField" || component.type == "FloatSliderNumberField" -> {
+            Box(
+                modifier = modifier
+                    .height(30.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                 Divider(Orientation.Horizontal, modifier = Modifier.fillMaxWidth())
+                 Box(Modifier.size(12.dp).background(Color.LightGray).align(Alignment.Center))
+            }
+        }
+        component.type == "Image" || component.type == "AssetImage" || component.type == "BackgroundImage" || component.type == "Icon" || component.type == "Sprite" -> {
+            val textureValue = component.properties["TexturePath"] ?: component.properties["@TexturePath"] ?: 
+                               component.properties["Texture"] ?: component.properties["@Texture"] ?:
+                               component.properties["Image"] ?: component.properties["@Image"] ?:
+                               component.properties["Icon"] ?: component.properties["@Icon"]
+            
+            Box(
+                modifier = modifier
+                    .background(Color.Gray.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(component.type, color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
+                    if (textureValue != null) {
+                        val fileName = textureValue.toString().substringAfterLast("/")
+                        Text(fileName, color = Color.White.copy(alpha = 0.7f), fontSize = 8.sp)
+                    }
+                }
+            }
+        }
+        component.type == "Divider" || component.type == "Separator" || component.type == "ContentSeparator" || component.type == "VerticalSeparator" || component.type == "Sep" || component.type == "ActionButtonSeparator" || component.type == "VerticalActionButtonSeparator" || component.type == "PanelSeparatorFancy" -> {
+             if (component.type.contains("Vertical")) {
+                 Divider(Orientation.Vertical, modifier = modifier.fillMaxHeight())
+             } else {
+                 Divider(Orientation.Horizontal, modifier = modifier.fillMaxWidth())
+             }
         }
         else -> {
-            Box(modifier = modifier.background(Color.Gray.copy(alpha = 0.3f))) {
-                Column {
-                    Text(component.type, fontSize = 8.sp, color = Color.LightGray)
-                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
+            // Fallback for unknown types - render as a group-like container
+            val iconValue = component.properties["Icon"] ?: component.properties["@Icon"]
+            if (iconValue != null) {
+                Box(modifier = modifier.background(Color.White.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                         Box(Modifier.size(16.dp).background(Color.White.copy(alpha = 0.3f)))
+                         component.children.forEach { RenderComponent(it, caretOffset, onComponentClick, project, file) }
+                    }
+                }
+            } else {
+                Box(modifier = modifier, contentAlignment = contentAlignment) {
+                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick, project, file) }
                 }
             }
         }
@@ -588,7 +840,7 @@ fun ColumnScope.RenderComponent(component: HytaleUiComponent, caretOffset: Int, 
 }
 
 @Composable
-fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit) {
+fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int, onComponentClick: (Int) -> Unit, project: Project, file: VirtualFile) {
     val isActive = caretOffset in component.startOffset..component.endOffset
     val isDeepestActive = isActive && component.children.none { caretOffset in it.startOffset..it.endOffset }
 
@@ -599,54 +851,72 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
     val paddingFull = when (paddingMap) {
         is Map<*, *> -> (paddingMap["Full"] ?: paddingMap["@Full"])?.toString()?.toIntOrNull() ?: 0
         is HytaleUiAnchor -> paddingMap.full ?: 0
+        is Number -> paddingMap.toInt()
         else -> 0
     }
-    val paddingTop = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Top"] ?: paddingMap["@Top"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
+    val paddingHorizontal = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Horizontal"] ?: paddingMap["@Horizontal"])?.toString()?.toIntOrNull() ?: paddingFull
         else -> paddingFull
+    }
+    val paddingVertical = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Vertical"] ?: paddingMap["@Vertical"])?.toString()?.toIntOrNull() ?: paddingFull
+        else -> paddingFull
+    }
+    val paddingTop = when (paddingMap) {
+        is Map<*, *> -> (paddingMap["Top"] ?: paddingMap["@Top"])?.toString()?.toIntOrNull() ?: paddingVertical
+        is HytaleUiAnchor -> paddingVertical
+        else -> paddingVertical
     }
     val paddingBottom = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Bottom"] ?: paddingMap["@Bottom"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
-        else -> paddingFull
+        is Map<*, *> -> (paddingMap["Bottom"] ?: paddingMap["@Bottom"])?.toString()?.toIntOrNull() ?: paddingVertical
+        is HytaleUiAnchor -> paddingVertical
+        else -> paddingVertical
     }
     val paddingLeft = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Left"] ?: paddingMap["@Left"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
-        else -> paddingFull
+        is Map<*, *> -> (paddingMap["Left"] ?: paddingMap["@Left"])?.toString()?.toIntOrNull() ?: paddingHorizontal
+        is HytaleUiAnchor -> paddingHorizontal
+        else -> paddingHorizontal
     }
     val paddingRight = when (paddingMap) {
-        is Map<*, *> -> (paddingMap["Right"] ?: paddingMap["@Right"])?.toString()?.toIntOrNull() ?: paddingFull
-        is HytaleUiAnchor -> paddingFull
-        else -> paddingFull
+        is Map<*, *> -> (paddingMap["Right"] ?: paddingMap["@Right"])?.toString()?.toIntOrNull() ?: paddingHorizontal
+        is HytaleUiAnchor -> paddingHorizontal
+        else -> paddingHorizontal
     }
 
     val marginMap = (component.properties["Margin"] ?: component.properties["@Margin"])
     val marginFull = when (marginMap) {
         is Map<*, *> -> (marginMap["Full"] ?: marginMap["@Full"])?.toString()?.toIntOrNull() ?: 0
         is HytaleUiAnchor -> marginMap.full ?: 0
+        is Number -> marginMap.toInt()
         else -> 0
     }
-    val marginTop = when (marginMap) {
-        is Map<*, *> -> (marginMap["Top"] ?: marginMap["@Top"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
+    val marginHorizontal = when (marginMap) {
+        is Map<*, *> -> (marginMap["Horizontal"] ?: marginMap["@Horizontal"])?.toString()?.toIntOrNull() ?: marginFull
         else -> marginFull
+    }
+    val marginVertical = when (marginMap) {
+        is Map<*, *> -> (marginMap["Vertical"] ?: marginMap["@Vertical"])?.toString()?.toIntOrNull() ?: marginFull
+        else -> marginFull
+    }
+    val marginTop = when (marginMap) {
+        is Map<*, *> -> (marginMap["Top"] ?: marginMap["@Top"])?.toString()?.toIntOrNull() ?: marginVertical
+        is HytaleUiAnchor -> marginVertical
+        else -> marginVertical
     }
     val marginBottom = when (marginMap) {
-        is Map<*, *> -> (marginMap["Bottom"] ?: marginMap["@Bottom"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
-        else -> marginFull
+        is Map<*, *> -> (marginMap["Bottom"] ?: marginMap["@Bottom"])?.toString()?.toIntOrNull() ?: marginVertical
+        is HytaleUiAnchor -> marginVertical
+        else -> marginVertical
     }
     val marginLeft = when (marginMap) {
-        is Map<*, *> -> (marginMap["Left"] ?: marginMap["@Left"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
-        else -> marginFull
+        is Map<*, *> -> (marginMap["Left"] ?: marginMap["@Left"])?.toString()?.toIntOrNull() ?: marginHorizontal
+        is HytaleUiAnchor -> marginHorizontal
+        else -> marginHorizontal
     }
     val marginRight = when (marginMap) {
-        is Map<*, *> -> (marginMap["Right"] ?: marginMap["@Right"])?.toString()?.toIntOrNull() ?: marginFull
-        is HytaleUiAnchor -> marginFull
-        else -> marginFull
+        is Map<*, *> -> (marginMap["Right"] ?: marginMap["@Right"])?.toString()?.toIntOrNull() ?: marginHorizontal
+        is HytaleUiAnchor -> marginHorizontal
+        else -> marginHorizontal
     }
 
     val baseModifier = run {
@@ -656,6 +926,18 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
             m = m.border(1.dp, Color.Cyan)
         }
         
+        anchor?.let {
+            // Apply Anchor offsets as padding BEFORE size so they act as margins relative to the alignment
+            // These will be correctly positioned by the parent Box with contentAlignment
+            if (it.top != null) m = m.padding(top = it.top.dp)
+            if (it.bottom != null) m = m.padding(bottom = it.bottom.dp)
+            if (it.left != null) m = m.padding(start = it.left.dp)
+            if (it.right != null) m = m.padding(end = it.right.dp)
+
+            if (it.width != null) m = m.width(it.width.dp)
+            if (it.height != null) m = m.height(it.height.dp)
+        }
+
         if (marginLeft > 0 || marginTop > 0 || marginRight > 0 || marginBottom > 0) {
             m = m.padding(
                 start = marginLeft.dp,
@@ -665,17 +947,6 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
             )
         }
 
-        if (anchor != null) {
-            if (anchor.width != null) m = m.width(anchor.width.dp)
-            if (anchor.height != null) {
-                m = m.height(anchor.height.dp)
-            } else if (flexWeight <= 0f) {
-                m = m.fillMaxHeight()
-            }
-        } else if (flexWeight <= 0f) {
-            m = m.fillMaxHeight()
-        }
-        
         val bgValue = component.properties["Background"] ?: component.properties["@Background"]
         val bg = bgValue as? HytaleUiColor
         if (bg != null) {
@@ -686,7 +957,16 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
             if (hex != null) {
                 val alpha = bgValue["alpha"]?.toString()?.toFloatOrNull() ?: bgValue["Alpha"]?.toString()?.toFloatOrNull() ?: 1.0f
                 m = m.background(parseHexColor(hex).copy(alpha = alpha))
+            } else {
+                // Check for image background in map
+                val texture = bgValue["TexturePath"]?.toString() ?: bgValue["@TexturePath"] ?: bgValue["Texture"]?.toString() ?: bgValue["@Texture"]
+                if (texture != null) {
+                    m = m.background(Color.Gray.copy(alpha = 0.2f))
+                }
             }
+        } else if (bgValue is String) {
+            // Background is an image path
+            m = m.background(Color.Gray.copy(alpha = 0.2f))
         } else if (component.type == "Group" && component.children.isEmpty() && anchor?.width != null && anchor.height != null) {
              m = m.background(Color.Gray.copy(alpha = 0.1f))
         }
@@ -705,9 +985,26 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
     val modifier = if (flexWeight > 0) baseModifier.weight(flexWeight) else baseModifier
     val layoutMode = (component.properties["LayoutMode"] ?: component.properties["@LayoutMode"])?.toString() ?: "Top"
 
-    when (component.type) {
-        "Group" -> {
-            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center" || layoutMode == "Centre") {
+    val labelTypes = listOf(
+        "Label", "CenteredTitleLabel", "HotkeyLabel", "LabelAffix", "PanelTitle", 
+        "RowLabel", "StatNameLabel", "StatNameValueLabel", "TitleLabel"
+    )
+    
+    val buttonTypes = listOf(
+        "Button", "ActionButton", "BackButton", "ColumnButton", "DestructiveTextButton", 
+        "PrimaryButton", "PrimaryTextButton", "SecondaryButton", "SecondaryTextButton", 
+        "SmallSecondaryTextButton", "TabButton", "TagTextButton", "TertiaryTextButton", 
+        "ToggleButton", "ToolButton", "TextButton", "MenuItem"
+    )
+
+    when {
+        component.type == "Group" || component.type == "Container" || component.type == "Content" || 
+        component.type == "DecoratedContainer" || component.type == "Overlay" || component.type == "Page" || 
+        component.type == "Pages" || component.type == "Panel" || component.type == "SectionContainer" || 
+        component.type == "Wrapper" || component.type == "ActionButtonContainer" || component.type == "Row" ||
+        component.type == "RowHintContainer" || component.type == "RowLabelContainer" || component.type == "Title" ||
+        component.type == "HeaderSearch" || component.type == "Legend" -> {
+            if (layoutMode == "Left" || layoutMode == "Right" || layoutMode == "Center" || layoutMode == "Centre" || component.type == "Row") {
                 Row(
                     modifier = modifier,
                     horizontalArrangement = when (layoutMode) {
@@ -721,7 +1018,7 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
                         else -> Alignment.Top
                     }
                 ) {
-                    component.children.forEach { RenderComponentInRow(it, caretOffset, onComponentClick) }
+                    component.children.forEach { RenderComponentInRow(it, caretOffset, onComponentClick, project, file) }
                 }
             } else {
                 Column(
@@ -737,20 +1034,19 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
                         else -> Alignment.Start
                     }
                 ) {
-                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
+                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick, project, file) }
                 }
             }
         }
-        "Label" -> {
+        component.type in labelTypes -> {
             val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
             val style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
             RenderLabel(text, style, modifier)
         }
-        "TextButton" -> {
+        component.type in buttonTypes -> {
             val text = (component.properties["Text"] ?: component.properties["@Text"])?.toString() ?: ""
             var style = (component.properties["Style"] ?: component.properties["@Style"]) as? Map<*, *>
 
-            // Unwrap style if it's wrapped in a constructor map like TextButtonStyle(...)
             if (style != null && style.size == 1 && !style.containsKey("Default") && !style.containsKey("@Default")) {
                 val firstValue = style.values.first()
                 if (firstValue is Map<*, *>) {
@@ -758,8 +1054,6 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
                 }
             }
             
-            // If the style is a TextButtonStyle, it will have a "Default" key (and "Hovered", "Pressed")
-            // Or it might just be the content of "Default" if it was resolved from a global style.
             val textButtonStyle = if (style?.containsKey("Default") == true) {
                 style["Default"] as? Map<*, *>
             } else if (style?.containsKey("@Default") == true) {
@@ -783,9 +1077,26 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
                     Color(0xFF2B3542)
                 }
             )
-            RenderLabel(text, labelStyle, btnModifier)
+            
+            val iconValue = component.properties["Icon"] ?: component.properties["@Icon"]
+            val iconAnchor = (component.properties["IconAnchor"] ?: component.properties["@IconAnchor"]) as? HytaleUiAnchor
+            var iconModifier: Modifier = Modifier.size(16.dp)
+            if (iconAnchor != null) {
+                if (iconAnchor.width != null) iconModifier = iconModifier.width(iconAnchor.width.dp)
+                if (iconAnchor.height != null) iconModifier = iconModifier.height(iconAnchor.height.dp)
+            }
+
+            if (iconValue != null) {
+                Row(modifier = btnModifier, verticalAlignment = Alignment.CenterVertically) {
+                    Box(iconModifier.background(Color.White.copy(alpha = 0.3f)))
+                    Spacer(Modifier.width(4.dp))
+                    RenderLabel(text, labelStyle, Modifier)
+                }
+            } else {
+                RenderLabel(text, labelStyle, btnModifier)
+            }
         }
-        "CheckBox", "CheckBoxWithLabel" -> {
+        component.type == "CheckBox" || component.type == "CheckBoxWithLabel" || component.type == "LabeledCheckBox" -> {
             val text = (component.properties["@Text"] ?: component.properties["Text"])?.toString() ?: ""
             val checked = (component.properties["@Checked"] ?: component.properties["Checked"])?.toString()?.toBoolean() ?: false
             
@@ -802,44 +1113,187 @@ fun RowScope.RenderComponentInRow(component: HytaleUiComponent, caretOffset: Int
             ) {
                 Box(
                     modifier = Modifier
-                        .width(16.dp)
-                        .height(16.dp)
-                        .background(Color(0xFF2B3542))
-                        .padding(2.dp)
-                ) {
-                    if (checked) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF4A9EFF)))
-                    }
-                }
+                        .size(20.dp)
+                        .border(1.dp, Color.Gray)
+                        .background(if (checked) Color.Cyan else Color.Transparent)
+                )
                 if (text.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = text, color = Color.White, fontSize = 13.sp)
+                    RenderLabel(text, null, Modifier)
                 }
             }
         }
-        "TextField" -> {
-            val placeholder = component.properties["PlaceholderText"]?.toString() ?: ""
+        component.type == "TextField" || component.type == "NumberField" || component.type == "MultilineTextField" || component.type == "CompactTextField" -> {
+            val placeholder = (component.properties["PlaceholderText"] ?: component.properties["@PlaceholderText"])?.toString() ?: ""
             Box(
-                modifier = modifier.background(Color(0xFF0A1119)).padding(horizontal = 8.dp),
+                modifier = modifier
+                    .height(30.dp)
+                    .background(Color.Black.copy(alpha = 0.2f))
+                    .border(1.dp, Color.Gray),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(text = placeholder, color = Color.Gray, fontSize = 13.sp)
+                Text(
+                    text = placeholder,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
             }
         }
-        "NumberField" -> {
-            val value = component.properties["Value"]?.toString() ?: "0"
+        component.type == "ProgressBar" || component.type == "CircularProgressBar" -> {
+            val value = (component.properties["Value"] ?: component.properties["@Value"])?.toString()?.toFloatOrNull() ?: 0.5f
             Box(
-                modifier = modifier.background(Color(0xFF0A1119)).padding(horizontal = 8.dp),
-                contentAlignment = Alignment.CenterEnd
+                modifier = modifier
+                    .height(20.dp)
+                    .background(Color.DarkGray)
             ) {
-                Text(text = value, color = Color.White, fontSize = 13.sp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(value.coerceIn(0f, 1f))
+                        .background(Color.Green)
+                )
             }
+        }
+        component.type == "Slider" || component.type == "SliderNumberField" || component.type == "FloatSliderNumberField" -> {
+            Box(
+                modifier = modifier
+                    .height(30.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                 Divider(Orientation.Horizontal, modifier = Modifier.fillMaxWidth())
+                 Box(Modifier.size(12.dp).background(Color.LightGray).align(Alignment.Center))
+            }
+        }
+        component.type == "Image" || component.type == "AssetImage" || component.type == "BackgroundImage" || component.type == "Icon" || component.type == "Sprite" -> {
+            val textureValue = component.properties["TexturePath"] ?: component.properties["@TexturePath"] ?: 
+                               component.properties["Texture"] ?: component.properties["@Texture"] ?:
+                               component.properties["Image"] ?: component.properties["@Image"] ?:
+                               component.properties["Icon"] ?: component.properties["@Icon"]
+            
+            Box(
+                modifier = modifier
+                    .background(Color.Gray.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(component.type, color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
+                    if (textureValue != null) {
+                        val fileName = textureValue.toString().substringAfterLast("/")
+                        Text(fileName, color = Color.White.copy(alpha = 0.7f), fontSize = 8.sp)
+                    }
+                }
+            }
+        }
+        component.type == "CheckBox" || component.type == "CheckBoxWithLabel" || component.type == "LabeledCheckBox" -> {
+            val text = (component.properties["@Text"] ?: component.properties["Text"])?.toString() ?: ""
+            val checked = (component.properties["@Checked"] ?: component.properties["Checked"])?.toString()?.toBoolean() ?: false
+            
+            val hAlign = component.properties["HorizontalAlignment"]?.toString() ?: "Left"
+
+            Row(
+                modifier = modifier, 
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = when (hAlign) {
+                    "Center" -> Arrangement.Center
+                    "Right" -> Arrangement.End
+                    else -> Arrangement.Start
+                }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .border(1.dp, Color.Gray)
+                        .background(if (checked) Color.Cyan else Color.Transparent)
+                )
+                if (text.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    RenderLabel(text, null, Modifier)
+                }
+            }
+        }
+        component.type == "TextField" || component.type == "NumberField" || component.type == "MultilineTextField" || component.type == "CompactTextField" -> {
+            val placeholder = (component.properties["PlaceholderText"] ?: component.properties["@PlaceholderText"])?.toString() ?: ""
+            Box(
+                modifier = modifier
+                    .height(30.dp)
+                    .background(Color.Black.copy(alpha = 0.2f))
+                    .border(1.dp, Color.Gray),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = placeholder,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+            }
+        }
+        component.type == "ProgressBar" || component.type == "CircularProgressBar" -> {
+            val value = (component.properties["Value"] ?: component.properties["@Value"])?.toString()?.toFloatOrNull() ?: 0.5f
+            Box(
+                modifier = modifier
+                    .height(20.dp)
+                    .background(Color.DarkGray)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(value.coerceIn(0f, 1f))
+                        .background(Color.Green)
+                )
+            }
+        }
+        component.type == "Slider" || component.type == "SliderNumberField" || component.type == "FloatSliderNumberField" -> {
+            Box(
+                modifier = modifier
+                    .height(30.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                 Divider(Orientation.Horizontal, modifier = Modifier.fillMaxWidth())
+                 Box(Modifier.size(12.dp).background(Color.LightGray).align(Alignment.Center))
+            }
+        }
+        component.type == "Image" || component.type == "AssetImage" || component.type == "BackgroundImage" || component.type == "Icon" || component.type == "Sprite" -> {
+            val textureValue = component.properties["TexturePath"] ?: component.properties["@TexturePath"] ?: 
+                               component.properties["Texture"] ?: component.properties["@Texture"] ?:
+                               component.properties["Image"] ?: component.properties["@Image"] ?:
+                               component.properties["Icon"] ?: component.properties["@Icon"]
+            
+            Box(
+                modifier = modifier
+                    .background(Color.Gray.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(component.type, color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
+                    if (textureValue != null) {
+                        val fileName = textureValue.toString().substringAfterLast("/")
+                        Text(fileName, color = Color.White.copy(alpha = 0.7f), fontSize = 8.sp)
+                    }
+                }
+            }
+        }
+        component.type == "Divider" || component.type == "Separator" || component.type == "ContentSeparator" || component.type == "VerticalSeparator" || component.type == "Sep" || component.type == "ActionButtonSeparator" || component.type == "VerticalActionButtonSeparator" || component.type == "PanelSeparatorFancy" -> {
+             if (component.type.contains("Vertical")) {
+                 Divider(Orientation.Vertical, modifier = modifier.fillMaxHeight())
+             } else {
+                 Divider(Orientation.Horizontal, modifier = modifier.fillMaxWidth())
+             }
         }
         else -> {
-            Box(modifier = modifier.background(Color.Gray.copy(alpha = 0.3f))) {
-                Column {
-                    Text(component.type, fontSize = 8.sp, color = Color.LightGray)
-                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick) }
+            // Fallback for unknown types - render as a group-like container
+            val iconValue = component.properties["Icon"] ?: component.properties["@Icon"]
+            if (iconValue != null) {
+                Box(modifier = modifier.background(Color.White.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                         Box(Modifier.size(16.dp).background(Color.White.copy(alpha = 0.3f)))
+                         component.children.forEach { RenderComponent(it, caretOffset, onComponentClick, project, file) }
+                    }
+                }
+            } else {
+                Column(modifier = modifier) {
+                    component.children.forEach { RenderComponent(it, caretOffset, onComponentClick, project, file) }
                 }
             }
         }
@@ -863,6 +1317,95 @@ fun parseHexColor(hex: String): Color {
         }
     } catch (e: Exception) {
         Color.DarkGray
+    }
+}
+
+// Helper functions for Padding/Margin extraction from HytaleUiAnchor
+private fun paddingFullFromAnchor(anchor: HytaleUiAnchor): Int = anchor.full ?: 0
+private fun paddingHorizontalFromAnchor(anchor: HytaleUiAnchor, fallback: Int): Int = anchor.left ?: anchor.right ?: fallback
+private fun paddingVerticalFromAnchor(anchor: HytaleUiAnchor, fallback: Int): Int = anchor.top ?: anchor.bottom ?: fallback
+
+private fun marginFullFromAnchor(anchor: HytaleUiAnchor): Int = anchor.full ?: 0
+private fun marginHorizontalFromAnchor(anchor: HytaleUiAnchor, fallback: Int): Int = anchor.left ?: anchor.right ?: fallback
+private fun marginVerticalFromAnchor(anchor: HytaleUiAnchor, fallback: Int): Int = anchor.top ?: anchor.bottom ?: fallback
+
+@Composable
+fun RenderImage(texturePath: String, project: Project, currentFile: VirtualFile, modifier: Modifier, componentType: String = "Image") {
+    val imageFile = remember(texturePath) {
+        fun findFile(path: String): VirtualFile? {
+            // Try relative to current file
+            val parent = currentFile.parent
+            var file = parent?.findFileByRelativePath(path)
+
+            // Try relative to project root
+            if (file == null) {
+                val projectDir = project.guessProjectDir()
+                file = projectDir?.findFileByRelativePath(path)
+            }
+
+            // Try direct path
+            if (file == null) {
+                val javaFile = File(path)
+                if (javaFile.exists()) {
+                    file = VfsUtil.findFileByIoFile(javaFile, true)
+                }
+            }
+            return file
+        }
+
+        var file = findFile(texturePath)
+
+        // Try @2x fallback if not found
+        if (file == null) {
+            val lastDotIndex = texturePath.lastIndexOf('.')
+            val pathAt2x = if (lastDotIndex != -1) {
+                texturePath.substring(0, lastDotIndex) + "@2x" + texturePath.substring(lastDotIndex)
+            } else {
+                texturePath + "@2x"
+            }
+            file = findFile(pathAt2x)
+        }
+
+        file
+    }
+
+    if (imageFile != null) {
+        val bitmap = remember(imageFile) {
+            try {
+                imageFile.inputStream.use { loadImageBitmap(it) }
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        if (bitmap != null) {
+            Image(
+                painter = BitmapPainter(bitmap),
+                contentDescription = texturePath,
+                modifier = modifier,
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            // Fallback if bitmap loading fails
+            Box(
+                modifier = modifier.background(Color.Red.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Error loading: ${imageFile.name}", fontSize = 8.sp, color = Color.White)
+            }
+        }
+    } else {
+        // Placeholder for missing file
+        Box(
+            modifier = modifier.background(Color.Gray.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(componentType, color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
+                val fileName = texturePath.substringAfterLast("/")
+                Text(fileName, color = Color.White.copy(alpha = 0.7f), fontSize = 8.sp)
+            }
+        }
     }
 }
 
